@@ -1,0 +1,752 @@
+---
+title: "Building a claims reserving model using the LASSO technique"
+output:
+  html_notebook:
+    number_sections: yes
+    theme: journal
+    toc: yes
+    toc_float: yes
+author: "Grainne McGuire"
+date: "`r Sys.Date()`"
+header-includes:
+  - \setlength{\parindent}{2em}
+  - \setlength{\parskip}{0em}
+abstract: "This contains a working example on how to calculate a claims reserve using the LASSO. The technique is demonstrated using a simulated data set"
+    
+---
+
+
+# Background
+
+Recently, Greg Taylor, Hugh Miller and myself completed some work to develop an approach for fitting a claims reserving model using regularised regression, the LASSO in particular. The approach, as a work in progress, was presented at the GI Seminar in 2016 [https://actuaries.asn.au/Library/Events/GIS/2016/4dHughMillerSelfassemblingclaimmodels.pdf] and more recently, in its final form, at the 2018 GIRO conference in the UK. Full details of this work may be found in the accompanying paper available at [https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3241906](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3241906).  
+
+The motivation behind this work is to develop an automatic method to construct a general insurance claims reserving model for data sets with complex features where simple approaches such as the chain ladder fail. In the past we have advocated the use of GLM models for such data sets, but the construction of a GLM is a time-consuming process, even for a skilled analyst. Our aim was to develop a procedure that produced a model similar to a GLM, but using machine learning techniques. This approach has performed well - as may be seen from the charts towards the end of this example, which show that the fitted curves can track the underlying specification quite well, even in the presence of significant noise, or difficult to detect interactions.
+
+The paper fills in the details around the approach, so they will not be repeated here. Instead, this will focus on illustrating the use of the LASSO in claims reserving by fitting the model to one of the synthetic data examples discussed in the paper. I will be working through a fully worked example with all R code available. To reduce dependencies on external libraries, I have carried out the work in base R as much as possible. 
+
+# Introduction to the example
+
+In our paper we investigate the use of the LASSO using four synthetic (i.e. simulated) data sets as well as a real data set. This worked example will use the third simulated data set. the specifications for this data set are given in Section 4.2.1 of the paper. The main points to note are that this data set :
+
+* is a 40x40 triangle, with
+* accident and development period effects
+* calendar period effects (i.e. superimposed inflation)
+* an step-interaction between accident and development period for accident periods greater than 17 and development periods greater than 20 (note this affects only 10 cells of the triangle)
+
+
+# R code
+
+## Setup
+
+First we must open R and load any libraries required. As noted above, I will use base R as much as possible so there are only two additional libraries required:
+
+* `glmnet` - this is the library we used to implement the LASSO model. References are in our paper.
+* `ggplot2` - for producing graphs.
+
+For reproducibility purposes, I've output information about my R session. All this work is done in RStudio.
+ 
+
+```{r, collapse=TRUE}
+library(glmnet)
+library(ggplot2)
+
+options("scipen"=99)
+
+sessionInfo()
+```
+
+
+## Generating the synthetic data set
+
+First we need a data set. The code below, using a seed of 130 produces the data set used in the paper.
+
+Before we generate the data, we need to create a small utility function which will be widely used - it takes a vector *var* and produces a spline piece between `start` and `stop` - flat (and 0) up to `start`, thereafter increasing to `stop` and then levelling out at this point. This is used both in the data generation and in the generation of basis functions for the LASSO.
+
+```{r}
+
+LinearSpline <- function(var, start, stop){
+	pmin(stop - start, pmax(0, var - start))
+}
+
+
+```
+
+
+The code below generates the data set as specified in our paper. If you want to use our data set, use a seed of 130. Otherwise, use different seeds to produce different data sets.
+
+
+```{r}
+
+# initialise the seed for reproducibilty
+set.seed(130)
+numperiods <- 40
+
+#periods
+kk <- rep(1:numperiods, each = numperiods) #AQ
+jj <- rep(1:numperiods, times= numperiods) #DQ
+tt <- kk+jj-1 # PQ
+
+
+# make a function of the SI effect to make it easier to read 
+gammafunc <- function(t){
+	gg <- 
+		ifelse( t<=12, gg <- 0.0075*LinearSpline(t,1,12),
+				ifelse(t<=24,  gg <- 0.0075*LinearSpline(12,1,12) + 0.001* (t-12)*(t-11)/2,
+					   ifelse(t<=32, gg <- 0.0075*LinearSpline(12,1,12) + 0.001* (24-12)*(24-11)/2,
+					   	   ifelse(t<=40, gg <- 0.0075*LinearSpline(12,1,12) + 0.001* (24-12)*(24-11)/2 + 0.002*(t-32)*(t-31)/2,
+					   	   	   0.0075*LinearSpline(12,1,12) + 0.001* (24-12)*(24-11)/2 + 0.002*(40-32)*(40-31)/2
+					   	   ))))
+	1*gg  #can scale up shape here if desired
+}
+
+alpha <- log(100000)+0.1*LinearSpline(kk,1,15)+0.2*LinearSpline(kk,15,20) - 0.05*LinearSpline(kk,30,40) 
+beta  <- (16/3 - 1)*log(jj)- (1/3)*jj  # a is 16/3, b is 1/3 
+gamma <- gammafunc(tt)
+mu <- exp( alpha + beta + gamma + 0.3*beta*ifelse(kk>16 & jj>20,1,0))  # need to check
+
+varbase <- (0.3 * mu[  kk==1 & jj ==16] )^2 # can scale variance up and down here
+CC  <-  varbase / mu[  kk==1 & jj ==16]
+
+vars   <- CC*mu
+tausq  <- log (vars / (mu^2) + 1)
+
+Y <- exp( rnorm( numperiods^2, mean = log(mu)-0.5*tausq , sd = sqrt(tausq)  ) )
+
+train_ind<-(tt<=numperiods)  
+
+synthetic_data<-data.frame(Y, kk, jj, tt, mu, train_ind )
+colnames(synthetic_data)<-c("Y", "acc", "dev", "cal", "mu", "train_ind")
+
+
+# clean-up
+rm(Y, kk, jj, tt, mu, train_ind)
+
+```
+<br><br>
+Let's have a look at the data
+
+```{r}
+head(synthetic_data)
+tail(synthetic_data)
+```
+
+The points to note about this data frame are:
+
+* `Y` is the comumn containing the data - assumed to be incremental claims payments here
+* `acc`, `dev` and `cal` are the columns with the accident, development and calendar period labels. Note that development period is numbered from 1.
+* `mu` contains the values for $\mu$, the true underlying mean value according to the model specifications
+* `train_ind` is a TRUE/FALSE vector. It is TRUE when the observation is in the past, a.k.a. the training data set and FALSE for future observations (unlike real data, we have the future available for a simulated data set)
+
+<br><br><br>
+
+## Specifying the LASSO model
+
+The LASSO model requires data (which we have), basis functions or regressors and model settings for the LASSO procedure. Unlike many regression problems, we actually only have 3 fundamental regressors - accident, development and calendar periods. A key part of our paper was how to expand these into a flexible set of basis functions, capable of capturing a variety of shapes in the model experience.
+
+In a nutshell, the approach in our paper sets out:
+
+* the use of ramp and interactions of indicator (or heaviside) functions to capture a range of experience
+* scaling factors for each of these.
+
+Since our process is intended to be automatic, we included all functions of accident, development and calendar periods into our synthetic data models, even though that introduces correlations between variables, and examined performance on that basis. For real problems (as in the real data example in the paper) we would recommend more discernment in the selection of which of the effects to include.
+
+<br><br>
+
+### Scaling
+
+For now, we are working to replicate the model for synthetic data set 3 so we include all possible functions (and indeed, this data set has accident, development and calendar period effects as well as an interaction). The first step is to calculate the scaling factors for each function derived from each of the three fundamental regressors. As per the paper we use $\rho$ scaling which is calculated as $\sum{\frac{(x-\bar{x})^2}{n}}$ where $\bar{x}$ is the mean of the regressor $x$ and $n$ is the number of elements in the regressor.
+
+For this synthetic data set, it is important to remember that in the real world, the future data will not be available. So the fundamental vectors are those containing past (or training) data only.
+
+We also need to calculate the scaling for each of the three regressors, so for coding efficiency and to reduce the risk of bugs, we first write a little function to do the calculations.
+
+Note that this scaling is a crucial component to the successful implementation of the reserving LASSO. The paper has more details, but basically the size of the parameters has a significant influence on whether they are included in a regularised regression, so if basis functions are on different scales, then this will influence their inclusion in the model.
+
+```{r}
+
+# function for ease
+GetScaling <- function(vec) {
+  fn <- length(vec)
+  fm <- mean(vec)
+  fc <- vec - fm
+  rho_factor <- ((sum(fc^2))/fn)^0.5
+}
+
+
+```
+
+
+Now we apply this function to each of the three fundamental regressors (limited to the training or past data) and store the results in a list.
+
+
+```{r}
+synthetic_data_train<-subset(synthetic_data, train_ind==TRUE)
+
+rho_factor_list <- vector(mode="list", length=3)
+names(rho_factor_list) <- c("acc", "dev", "cal")
+
+for (v in c("acc", "dev", "cal")){
+  rho_factor_list[[v]] <- GetScaling(synthetic_data_train[[v]])
+}
+
+
+print(rho_factor_list)
+
+```
+
+The factors are all equal in this case. In hindsight this makes sense - we have the complete 40 x 40 past triangle, and all regressors are numbered from 1, so all three regressors are permutations of the same numbers. 
+
+<br><br>
+
+### Basis functions
+
+Our recommended set of basis functions include:
+
+* ramp functions for main effects:
+    + $R_j(i) = \max(j-i, 0)$ for $j=$ accident, development and calendar periods and $i=1, 2, ..., 39$
+* interactions of the heaviside indicator functions:
+    + $H_j(i) = I(j>=i)$, i.e. all combinations of $H_{acc}(i) * H_{dev}(k)$, $H_{acc}(i) * H_{cal}(k)$,  $H_{dev}(i) * H_{cal}(k)$. 
+
+<br>
+
+#### Main effects - ramp functions
+
+To calculate the ramps we first write a function to do this, since we need to repeat this three times. glmnet expects a matrix of values for the basis functions, so we create a matrix rather than a data.frame. Furthermore, to ensure speed, we preallocate the space to store all the basis functions before running a loop to produce all the ramp functions (many people are scared of loops in R finding them slow, but often this is because they do not preallocate memory beforehand to store the results of the loop)  
+
+
+```{r}
+
+GetRamps <- function(vec, vecname, np, scaling){
+  
+  # vec = fundamental regressor
+  # vecname = name of regressor
+  # np = number of periods
+  # scaling = scaling factor to use
+  
+  # pre-allocate the matrix to hold the results for speed/efficiency
+  n <- length(vec)
+  nramps <- (np-1)
+  
+  mat <- matrix(data=NA, nrow=n, ncol=nramps)
+  cnames <- vector(mode="character", length=nramps)
+  
+
+  col_indx <- 0
+
+  for (i in 1:(np-1)){
+    col_indx <- col_indx + 1
+
+    mat[, col_indx] <- LinearSpline(vec, i, 999) / scaling
+    cnames[col_indx] <- paste0("L_", i, "_999_", vecname)
+  }
+  
+  colnames(mat) <- cnames
+  
+  return(mat)
+}
+
+```
+ 
+Now let's run the function 3 times to get each set of ramp functions and combine them at the end. Note that we produce ramps for the **entire** data set, past and future. This leads to a 1600 x 117 (39*3) matrix.
+
+```{r} 
+main_effects_acc <- GetRamps(vec = synthetic_data[["acc"]], vecname = "acc", 
+                             np = numperiods, scaling = rho_factor_list[["acc"]])
+main_effects_dev <- GetRamps(vec = synthetic_data[["dev"]], vecname = "dev", 
+                             np = numperiods, scaling = rho_factor_list[["dev"]])
+main_effects_cal <- GetRamps(vec = synthetic_data[["cal"]], vecname = "cal", 
+                             np = numperiods, scaling = rho_factor_list[["cal"]])
+	
+main_effects <- cbind(main_effects_acc, main_effects_dev, main_effects_cal)
+
+print(dim(main_effects))
+
+
+```
+
+<br>
+
+### Interaction effects - heaviside functions
+
+We follow a similar approach to the above - write a function since we need to call it 3 times. It is even more important to preallocate memory here before looping to create interactions because of the number of these. Without this, the loop would need to copy an ever-growing matrix each time, thereby significantly slowing down runtimes. Our approach of slotting values into reserved space is far more efficient.
+
+Here's the function:
+
+```{r}
+
+GetInts <- function(vec1, vec2, vecname1, vecname2, np, scaling1, scaling2) {
+  
+  # pre-allocate the matrix to hold the results for speed/efficiency
+  n <- length(vec1)
+  nints <- (np-1)*(np-1)
+  
+  mat <- matrix(data=NA_real_, nrow=n, ncol=nints)
+  cnames <- vector(mode="character", length=nints)
+  
+
+  col_indx <- 0
+
+  for (i in 2:np){
+    
+    ivec <- LinearSpline(vec1, i-1, i) / scaling1
+    iname <- paste0("I_", vecname1, "_ge_", i)
+    
+    if (length(ivec[is.na(ivec)]>0)) print(paste("NAs in ivec for", i))
+    
+    for (j in 2:np){
+      col_indx <- col_indx + 1  
+      mat[, col_indx] <- ivec * LinearSpline(vec2, j-1, j) / scaling2
+      cnames[col_indx] <- paste0(iname, "*I_", vecname2, "_ge_", j)
+      
+      jvec <- LinearSpline(vec2, j-1, j) / scaling2
+      if (length(jvec[is.na(jvec)]>0)) print(paste("NAs in jvec for", j))
+
+    }
+  }
+  
+  colnames(mat) <- cnames
+  
+  return(mat)
+
+  
+}
+
+```
+
+
+Now we call it and check the dimensions - 1600 x 4563(! 3 * 39 * 39).:
+
+```{r}
+
+int_effects <- cbind(
+  GetInts(vec1=synthetic_data[["acc"]], vecname1="acc", scaling1=rho_factor_list[["acc"]], np=numperiods, 
+                       vec2=synthetic_data[["dev"]], vecname2="dev", scaling2=rho_factor_list[["dev"]]),
+
+    GetInts(vec1=synthetic_data[["dev"]], vecname1="dev", scaling1=rho_factor_list[["dev"]], np=numperiods, 
+                       vec2=synthetic_data[["cal"]], vecname2="cal", scaling2=rho_factor_list[["cal"]]),
+  
+    GetInts(vec1=synthetic_data[["acc"]], vecname1="acc", scaling1=rho_factor_list[["acc"]], np=numperiods, 
+                       vec2=synthetic_data[["cal"]], vecname2="cal", scaling2=rho_factor_list[["cal"]])
+
+)
+
+
+print(dim(int_effects))
+
+
+```
+
+Finally combine the main and interactions effects into a single matrix - *varset*. Also save a vector containing the training (past) data indicator and get the number of main and interaction effects.
+
+
+
+```{r}
+
+varset <- cbind(main_effects, int_effects)
+
+train_ind <- synthetic_data[["train_ind"]]
+
+num_main_effects <- ncol(main_effects)
+num_interactions <- ncol(int_effects)
+
+
+```
+
+
+<br><br>
+
+### LASSO setup
+
+The `glmnet` package has two functions: `glmnet` and `cv.glmnet`. `glmnet` fits a regularised regression model while `cv.glmnet` fits using cross validation. We make use of both functions, first `glmnet` to get a vector of LASSO penalties (referred to as $\lambda$), then `cv.glmnet` using the $\lambda$s from `glmnet` in the cross validation process. 
+
+In addition to the data and basis functions, `glmnet` and `cv.glmnet` have a number of tuning parameters. These include:
+
+* A set of values for $\lambda$, the regularision penalty. We use the $\lambda$ vector estimated by `glmnet` and then extend it further to ensure that we have a comprehensive range of $\lambda$ values for the cross-validation exercise.
+
+* penalty factors: this is a basis function specific penalty factor so provides the functionality to have different penalties for the different basis functions, i.e. if $pf$ is the vector of penalty functions, then $\lambda {pf}$ is the set of penalty factors used. Here we use the default of the same scaling for all functions (factors of 1 throughout), but we set up a penalty factor vector below in case you would like to experiment with it - e.g. to make interactions less or more likely to be used you could increase/decrease the penalty for interactions.
+
+* `pmax` - the maximum number of variables ever to be non-zero in a model
+* `dfmax` - maximum number of variables in a model
+* `family` - the response type to use. Of the options offered by the `glmnet` package, the Poisson is the best selection for a claims reserving model.
+
+The settings we used for the latter 3 are below.
+
+```{r}
+penalty_factor <- c( rep(1,num_main_effects), rep(1, num_interactions))
+
+my_pmax <- numperiods^2   # max number of variables ever to be nonzero
+my_dfmax <- numperiods*10  #max number of vars in the model
+
+
+```
+
+
+To get the vector $\lambda$ values to use in the cross validation, run `glmnet` as below. Note that `alpha=1` makes it fit a LASSO. 
+We have also increased the maximum number of iterations to 200000 since convergence can be slow in this example. The code takes about 13-15 sec on my computer.
+
+Note we set the `standardize` argument to false - this is because we use our own standardisation for the basis functions.
+
+
+```{r}
+time1 <- Sys.time()
+
+pre_fit <- glmnet(x = varset[train_ind,], 
+                  y = synthetic_data$Y[train_ind], 
+                  family = "poisson", 
+                  nlambda = 200, 
+                  thresh = 1e-08, 
+                  lambda.min.ratio = 0, 
+                  dfmax = my_dfmax, 
+                  pmax = my_pmax, 
+                  alpha = 1, 
+                  standardize = FALSE, 
+                  penalty.factor = penalty_factor, 
+                  maxit = 200000)
+
+print(paste("time taken: ", Sys.time() - time1))
+
+```
+
+
+The $\lambda$ vector that we actually used in the cross validation implementation of the LASSO is an extended version of the one automatically generated by `glmnet`. This is to ensure that we do find the minimum CV error point as sometimes it may be beyond the smallest value for $\lambda$ produced by `glmnet` above. 
+
+```{r}
+
+lambdavec <- c(pre_fit$lambda, min(pre_fit$lambda)*(0.85^(1:50)))  # lengthen lambda vector
+```
+
+
+## Fitting the LASSO model
+
+We now do the actual fitting using 8-fold cross validation (Rob Tibshirani, who wrote the original statistical paper on LASSO, recommends between 5 and 10 folds). We use `lambdavec`, rather than letting `cv.glmnet` estimate its own version. Otherwise the settings are the same.
+
+
+```{r}
+
+
+
+#fit now using CV
+time1 <- Sys.time()
+
+cv_fit <- cv.glmnet(x = varset[train_ind,], 
+                  y = synthetic_data$Y[train_ind], 
+                  family = "poisson", 
+                  lambda = lambdavec, 
+                  nfolds = 8,
+                  thresh = 1e-08, 
+                  lambda.min.ratio = 0, 
+                  dfmax = my_dfmax, 
+                  pmax = my_pmax, 
+                  alpha = 1, 
+                  standardize = FALSE, 
+                  penalty.factor = penalty_factor, 
+                  maxit = 200000)
+
+
+
+
+
+print(paste("time taken for cross validation fit: ", Sys.time() - time1))
+
+
+
+```
+
+<br>
+*Eek! Fortran error* 
+
+Yes, there are Fortran errors. However, if you read the errors, you see that they result from our settings of the `pmax` variable. Basically models for the 195th and higher values (and since the $\lambda$ values monotonically decrease this means smaller values) in the `lambdavec` do not return solutions that meet the constraints on `pmax`.
+
+Therefore the errors are not an issue as long as the cross validation process has found a minimum value within the range of $\lambda$ values it does consider. `cv.glmnet` objects have a plot method associated with them which plots the CV fit, so I'll use it here to see if a minimum value was identified:
+
+
+```{r}
+plot(cv_fit)
+```
+
+The dashed lines represent the minimum CV model (smaller $\lambda$) and one a standard deviation away. These are selections commonly used by modellers. So while we only got models for 194 of the original 250 $\lambda$ values input in `lambdavec`, these models do include a model which produces the minimum CV error (this is actually that the 148th value in `lambdavec`).
+
+<br>
+Given this is simulated data, we can also look at test error - the graph below shows training, test and CV error.
+
+
+```{r}
+
+#training error
+predicted_train <- exp(predict(cv_fit, newx = varset[train_ind,], s = cv_fit$lambda))
+error_train <- colMeans(((synthetic_data$Y[train_ind] - predicted_train)^2) / predicted_train )
+
+#test error - note 
+predicted_test <- exp(predict(cv_fit, newx = varset[!train_ind,], s = cv_fit$lambda))
+error_test <- colMeans(((synthetic_data$Y[!train_ind] - predicted_test)^2) / predicted_test )
+
+
+# number of parameters in models (df field)
+# since not all lambdas returned values, use length of cv.glmnet object to get the right value
+use_df <- cv_fit$glmnet.fit$df[1:length(cv_fit$lambda)]
+
+#make a stacked data set suitable for ggplot [ i.e. tidy format]
+dferrorg <- data.frame( 
+  rep(1:length(use_df), times=3), 
+  rep(use_df, times=3), 
+  c(error_train, error_test, cv_fit$cvm)/1000,
+	c( rep("Training error", times=length(use_df)), rep("Test error", times=length(use_df)), rep("CV error", times=length(use_df)) )
+)
+
+colnames(dferrorg)<-c("model_number", "num_params", "Error", "labels")	
+
+
+g <- ggplot(data=dferrorg, aes(x=model_number, y=Error, colour=labels))+
+	geom_line(size=1.5, aes(linetype=labels, colour=labels), alpha=0.8)+
+	theme_classic()+
+	theme(legend.position="bottom")+
+	labs(x="Model number", y="Error measure (thousands)")+
+	scale_color_manual(name="", values=c("grey40", "steelblue3", "dodgerblue4"))+
+	scale_linetype_manual(name="", values=c("solid", "dashed", "dotdash"))+
+	scale_y_log10(labels=scales::comma)+
+	NULL
+
+print(g)
+
+```
+
+Happily, low values of the test error align with low CV error values - which is what we would expect to see.
+
+<br><br><br>
+
+# Analysing the model
+
+We have used the model corresponding to the minimum CV error in the paper (`lambda.min` in the `cv.glmnet` results object, `cv_fit`. First let's look at the coefficients in this model.
+
+
+```{r}
+
+
+#all coefficients
+coefs_min <- predict(cv_fit, type = "coefficients", s = cv_fit$lambda.min)
+coefnames <- c("Intercept", colnames(varset))
+
+#indicators for non-zero ones
+ind_nz_min<-which(!(coefs_min == 0))
+
+#non-zero coefficient
+nzcoefs_min<-cbind(coefs_min[ind_nz_min,])
+rownames(nzcoefs_min)<-coefnames[ind_nz_min]
+colnames(nzcoefs_min)<-c("coefficients [min CV model]")
+
+
+
+print(paste("Number of non-zero coefficients in min CV model:", length(nzcoefs_min)))
+print(nzcoefs_min)
+
+```
+
+Note the interactions at the end. Are these detecting the interaction that we know is in this simulated data set? We will find out below.
+
+<br>
+
+It is also useful to look at actual and fitted plots for the different predictors. The paper shows a number of these.
+
+To produce these plots, we first add the column of fitted values to the data.frame holding the data using the `predict` method for a `cv.glmnet` object. Our selected model is that corresponding to the minimum CV error, which is corresponds to the $\lambda$ stored by the `cv_fit$lambda_min` component of the `cv.glmnet` object.
+
+```{r}
+
+synthetic_data$fitted_lasso<- as.vector(exp(predict(cv_fit, newx = varset, s = cv_fit$lambda.min)) )
+
+
+```
+
+
+The function below produces the tracking graphs shown in the paper - plot values for all levels of one fundamental predictor holding a second predictor at a fixed value. To help with looking at the data, it also shades the past part of the data in grey.
+
+Since `ggplot2` is a tidyverse package, it is easiest to put our data into *tidy* format (essentially stacked/long output) prior to using `ggplot`.
+
+```{r}
+
+GraphModelVals<-function(data, primary_predictor, secondary_predictor, secondary_predictor_val, fitted_name, predictor_label){
+	
+	#extract data we want to use
+	use_data <- data[data[[secondary_predictor]] == secondary_predictor_val,]
+
+	
+	# turn into tidy layout - note that we have simulated data, underlying mean, fitted data all to stack.
+	data_tidy <- data.frame( 
+	  rep(use_data[[primary_predictor]], times=3),
+	  c(use_data[["Y"]], use_data[["mu"]], use_data[[fitted_name]]),
+	  c(rep("Simulated", times=nrow(use_data)), rep("Underlying", times=nrow(use_data)), rep("Lasso", times=nrow(use_data))) 
+	  )
+	colnames(data_tidy) <- c("predictor", "values", "data_labels")
+	
+	data_tidy$values <- log(data_tidy$values)
+
+	
+	# extract values for past rectangle
+	xmin1 <- min(use_data[[primary_predictor]][use_data$train_ind==TRUE])
+	xmax1 <- max(use_data[[primary_predictor]][use_data$train_ind==TRUE])
+	
+	ymin1 <- min(data_tidy$values)*0.95
+	ymax1 <- max(data_tidy$values)*1.05
+	
+	g <- ggplot(data=data_tidy, aes(x=predictor, y=values, group=data_labels))+
+	  geom_line(aes(linetype=data_labels, colour=data_labels, size=data_labels, alpha=data_labels))+
+	  scale_colour_manual(name="", values=c("indianred4", "slategrey", "slategrey"))+
+	  scale_linetype_manual(name="", values=c("solid", "solid", "dotted"))+
+	  scale_size_manual(name="", values=c(2,1,1))+
+	  scale_alpha_manual(name="", values=c(0.8, 0.5, 0.5))+
+	  theme_classic()+
+	  annotate(geom="rect", xmin=xmin1, xmax=xmax1, ymin=ymin1, ymax=ymax1, alpha=0.1)+
+	  theme(legend.position="bottom")+
+	  labs(x=predictor_label, y="Log(Payments)", title=paste(predictor_label, "tracking for", secondary_predictor, "=", secondary_predictor_val))
+	  
+	
+
+  invisible(list(data=data_tidy, graph=g))
+}
+
+
+```
+
+Now let's look at development quarter when accident quarter is 20. Remember the step-interaction starts at dev=21 - which we see in the graph.
+
+
+```{r}
+
+dev_graph_list <- GraphModelVals(data = synthetic_data, 
+                             primary_predictor = "dev", 
+                             secondary_predictor = "acc", 
+                             secondary_predictor_val = 20, 
+                             fitted_name = "fitted_lasso",
+                             predictor_label = "Development quarter")
+
+
+dev_graph_list$graph
+
+```
+
+Similarly we can look at accident quarter tracking when development quarter is 24 and again see the interaction.
+
+```{r}
+
+acc_graph_list <- GraphModelVals(data = synthetic_data, 
+                             primary_predictor = "acc", 
+                             secondary_predictor = "dev", 
+                             secondary_predictor_val = 24, 
+                             fitted_name = "fitted_lasso",
+                             predictor_label = "Accident quarter")
+
+
+acc_graph_list$graph
+
+
+```
+
+
+
+You should, of course, carry out a full model validation exercise on any model prior to use, examining residuals, triangular heat maps and tweak the model if needed.
+
+<br><br><br>
+
+# Claims reserves
+
+Finally, let's get some claims reserve estimates and compare to those from an 8-period chain ladder.
+
+First let's calculate the chainladder reserve.
+
+```{r}
+
+# cumulative payments on training data set
+synthetic_data_train$Ycum <- unlist(tapply(synthetic_data_train$Y, synthetic_data_train$acc, cumsum))
+
+# calc cl factors using an 8 quarter average
+cl_fac <- numeric(numperiods-1)
+
+for (j in 1:numperiods-1){
+  
+  cl_fac[j] <- sum(subset(synthetic_data_train, dev == j+1 & acc > (numperiods-8-j) & acc <= numperiods-j)$Ycum) / 
+    sum(subset(synthetic_data_train, dev == j & acc > (numperiods-8-j) & acc <= numperiods-j)$Ycum)
+}
+
+
+# accumulate the CL factors
+cl_cum <- cumprod(rev(cl_fac))
+
+# leading diagonal
+leading_diagonal <- subset(synthetic_data_train, cal == numperiods & acc>1)$Ycum
+
+# CL amounts now
+cl_os <- cl_cum * leading_diagonal - leading_diagonal
+
+```
+
+
+Running the code shows that the reserve for accident period 40 is a bit high(!) - so the y-axis scale on any plots may need to be adjusted for display purposes.
+
+
+```{r}
+
+print("CL outstanding estimates")
+head( data.frame(Accident=numperiods:2, os = rev(cl_os/1000000000)))
+
+
+```
+
+
+We use the `tapply` function to calculate the outstanding amounts by accident period for the LASSO model as well as the true values (both the "actual" simulated values and the true underlying values).
+
+```{r}
+
+synthetic_data_test <- subset(synthetic_data, train_ind == FALSE)
+
+lasso_os <- tapply(synthetic_data_test$fitted_lasso, synthetic_data_test$acc, sum)
+sim_os <- tapply(synthetic_data_test$Y, synthetic_data_test$acc, sum)
+true_os <- tapply(synthetic_data_test$mu, synthetic_data_test$acc, sum)
+
+
+#combine into a tidy dataset for ggplot
+# add a linetype option to have different linetypes
+compare_os <- data.frame(
+  rep(2:numperiods, times=4), 
+  c(sim_os, lasso_os, cl_os, true_os)/1000000000,
+  c(rep("Simulated", times=numperiods-1), rep("Lasso", times=numperiods-1), rep("Chainladder (8 qtr)", times=numperiods-1), rep("Underlying", times=numperiods-1) )
+)
+colnames(compare_os)<-c("Accident", "Outstanding", "data_labels")
+
+
+
+```
+
+
+Here's a plot of the results (similar to that in the paper). Note that the y-axis is restricted for readability so that the actual chain ladder value for accident period 40 does not display on the graph.
+
+```{r}
+os_plot <-
+	ggplot(data=compare_os, aes(x=Accident, y=Outstanding, group=data_labels))+
+	geom_line(aes(colour=data_labels, linetype=data_labels), alpha=0.8, size=0.75)+
+	scale_colour_manual(name="", values=c("steelblue3", "indianred4", "slategrey", "slategrey" ))+
+	scale_linetype_manual(name="", values=c("dashed", "solid", "dotted", "solid" ))+
+	geom_line(data=subset(compare_os, data_labels=="Lasso"), aes(colour=data_labels), size=1.25, alpha=0.8, colour="indianred4", linetype="solid")+
+  coord_cartesian(ylim=c(0, 40))+
+	theme_classic()+
+	theme(legend.position="bottom", legend.title=element_blank())+
+	scale_y_continuous(labels=scales::comma)+
+	labs(x="Accident quarter", y="Amount ($B)")+
+	NULL
+
+os_plot
+
+```
+
+You can see from the graph that - despite the presence of an interaction affecting only a small number of cells, the LASSO model detects and responds appropriately to this change. By contrast, the chain ladder model does not perform so well.
+
+<br><br><br>
+
+# Conclusion
+
+The aim of this article has been to demonstrate the fitting of a claims reserving model using a LASSO approach in R and to produce some of the model diagnostic and results output that a user might wish to examine. If you would like to experiment some more, you could try modifying the synthetic data set code to produce other types of simulated data (such as those in our paper), or try it out on a real data example.  
+
+
+<br><br><br>
+
+***
+
+This work is licensed under a [Creative Commons Attribution-NonCommercial-No Derivatives CC BY-NC-ND Version 3.0 (CC Australia ported licence)](https://creativecommons.org/licenses/by-nc-nd/3.0/au/). 
