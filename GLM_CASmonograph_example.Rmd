@@ -7,13 +7,14 @@ output:
     toc: yes
     toc_float: yes
 author: "Grainne McGuire"
-date: "5 November 2019"
+date: "7 November 2019"
 header-includes:
   - \setlength{\parindent}{2em}
   - \setlength{\parskip}{0em}
 abstract: "This notebooks demonstrates how to fit a simple reserving GLM using R drawn from a 2015 CAS monograph on stochastic reserving."
 
 ---
+
 
 
 # Introduction
@@ -191,7 +192,8 @@ We will also print the table again in a nicer form to make it easier to compare 
 ```{r}
 
 # save the data for later use
-glm_fit1$coeff_table <- data.table(parameter = names(glm_fit1$coefficients), coeff_glm_fit1 = glm_fit1$coefficients)
+glm_fit1$coeff_table <- data.table(parameter = names(glm_fit1$coefficients), 
+								   coeff_glm_fit1 = glm_fit1$coefficients)
 
 # print out the table so we can compare against Table 3-5.
 glm_fit1$coeff_table %>% 
@@ -249,21 +251,51 @@ It's always important to check that a model fits the data well, so here we look 
    + by linear predictor
    + by accident, development and calendar years
    
-* Heat map of residuals
+* Heat map of actual vs fitted
    + In this we get the actual/fitted ratio in each (acc, dev) cell [subject to lower and upper bounds of (0.5, 2)] and then plot the colour-coded triangle of the actual/fitted values
    + heat maps are helpful to check for model fit and may help to identify missing interactions.
 
 
-First we prepare the data by adding the fitted values and residuals 
+**Note on residuals with `glm`**
+
+* The residuals in a glm object accessed with `$residuals` are residuals used in the model fitting algorithm.
+* For diagnostic purposes, the standardised deviance residuals are usually preferable to work with.
+  + These are the signed square roots of the contribution of the i*th* observation to the deviance, divided by hat matrix values.
+  + The `stats::rstandard()` function may be used with glm objects to extract the standardised deviance residuals.
+
+<br><br>
+
+**Generating the diagnostics**
+
+* First we prepare the data by adding the fitted values and residuals. 
+  +  Because this model has a lot of parameters, there are two observations where the fitted is exactly equal to the actual -- (acc_year=1, dev_year=10) and (acc_year=10, dev_year=0).
+  This is because these observations have a unique parameter.
+  + The deviance calculations below return NaN (not a number) for these points, but the residual should really be 0 so this adjustment is made manually. 
+  
+* Also add actual/fitted ratios and the log of these (restricted to the range [log(0.5), log(2)]) - these will be used for a heatmap later. 
+  + The restricted range is used to generate easier to read shadings in the heat-map, while the conversion to log means that the shading scales will be similar intensity for $x$% and $1/x$ % 
+
 
 ```{r}
-msdata[, residuals1 := glm_fit1$residuals
+msdata[, residuals1 := rstandard(glm_fit1)
 	   ][, fitted1 := glm_fit1$fitted.values
 	     ][, linear_predictor1 := log(fitted1)
 	       ][, AvsF1 := incremental / fitted1
 	         ][, AvsF_restricted1 := log(pmax(0.5, pmin(2,AvsF1)))]
 
-head(msdata)
+# check for NaN residuals
+msdata[is.nan(residuals1),]
+
+# these occur where we expect them so so replace with 0
+msdata[is.nan(residuals1), residuals1 := 0]
+
+
+```
+
+Look at the first 10 rows of msdata
+
+```{r}
+head(msdata, 10)
 ```
 
 
@@ -584,7 +616,7 @@ ggplot(data=dt_dev_year_plot, aes(x=dev_year, y=estimate, colour=model)) +
 
 
 ```{r}
-msdata[, residuals4 := glm_fit4$residuals
+msdata[, residuals4 := rstandard(glm_fit4)
 	   ][, fitted4 := glm_fit4$fitted.values
 	     ][, linear_predictor4 := log(fitted4)
 	       ][, AvsF4 := incremental / fitted4
@@ -678,7 +710,7 @@ glm_fit5$coeff_table %>%
 
 ```{r}
 # attach fitteds and residuals
-msdata[, residuals5 := glm_fit5$residuals
+msdata[, residuals5 := rstandard(glm_fit5)
 	   ][, fitted5 := glm_fit5$fitted.values
 	     ][, linear_predictor5 := log(fitted5)
 	       ][, AvsF5 := incremental / fitted5
@@ -822,10 +854,15 @@ Please send any feedback or error corrections to me at [grainnemcguire@yahoo.com
 
 # Session information
 
-Here are details of my R session.
+To assist with reproducibility, here are details of my R session.
 
 
 ```{r}
 sessionInfo()
 ```
+
+
+***
+
+This work is licensed under a [Creative Commons Attribution-NonCommercial-No Derivatives CC BY-NC-ND Version 3.0 (CC Australia ported licence)](https://creativecommons.org/licenses/by-nc-nd/3.0/au/). 
 
