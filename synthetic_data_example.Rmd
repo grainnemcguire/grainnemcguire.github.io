@@ -7,7 +7,7 @@ output:
     toc: yes
     toc_float: yes
 author: "Grainne McGuire"
-date: "`r Sys.Date()`"
+date: "7 November 2019"
 header-includes:
   - \setlength{\parindent}{2em}
   - \setlength{\parskip}{0em}
@@ -23,6 +23,12 @@ Recently, Greg Taylor, Hugh Miller and myself completed some work to develop an 
 The motivation behind this work is to develop an automatic method to construct a general insurance claims reserving model for data sets with complex features where simple approaches such as the chain ladder fail. In the past we have advocated the use of GLM models for such data sets, but the construction of a GLM is a time-consuming process, even for a skilled analyst. Our aim was to develop a procedure that produced a model similar to a GLM, but using machine learning techniques. This approach has performed well - as may be seen from the charts towards the end of this example, which show that the fitted curves can track the underlying specification quite well, even in the presence of significant noise, or difficult to detect interactions.
 
 The paper fills in the details around the approach, so they will not be repeated here. Instead, this will focus on illustrating the use of the LASSO in claims reserving by fitting the model to one of the synthetic data examples discussed in the paper. I will be working through a fully worked example with all R code available. To reduce dependencies on external libraries, I have carried out the work in base R as much as possible. 
+
+
+If you want to access the underlying Rnotebook directly, you may access it at: 
+
+* [synthetic_data_example.Rmd](https://github.com/grainnemcguire/grainnemcguire.github.io/blob/master/synthetic_data_example.Rmd). 
+
 
 # Introduction to the example
 
