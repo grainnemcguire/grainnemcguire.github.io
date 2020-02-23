@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>bootstrap | GMG</title>
+    <link>/tags/bootstrap/</link>
+      <atom:link href="/tags/bootstrap/index.xml" rel="self" type="application/rss+xml" />
+    <description>bootstrap</description>
+    <generator>Source Themes Academic (https://sourcethemes.com/academic/)</generator><language>en-us</language><copyright>© Grainne McGuire 2020 [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/)</copyright><lastBuildDate>Wed, 04 May 2016 00:00:00 +0000</lastBuildDate>
+    <image>
+      <url>/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_2.png</url>
+      <title>bootstrap</title>
+      <link>/tags/bootstrap/</link>
+    </image>
+    
+    <item>
+      <title>Stochastic loss reserving using Generalized Linear Models</title>
+      <link>/publication/2016_monograph/</link>
+      <pubDate>Wed, 04 May 2016 00:00:00 +0000</pubDate>
+      <guid>/publication/2016_monograph/</guid>
+      <description>
+
+
+&lt;p&gt;The purpose of the monograph is to provide access to generalized linear models for loss reserving but initially with strong emphasis on the chain ladder. The chain ladder is formulated in a GLM context, as is the statistical distribution of the loss reserve. This structure is then used to test the need for departure from the chain ladder model and to formulate any required model extensions.&lt;/p&gt;
+&lt;p&gt;The chain ladder is by far the most widely used method for loss reserving. The chain ladder algorithm itself is non-stochastic, but Mack (1993) defined a stochastic version of the model and showed how a mean square error of prediction may be associated with any loss reserve obtained from this model.&lt;/p&gt;
+&lt;p&gt;There are, however, two families of stochastic model which generate the chain ladder algorithm for the estimation of loss reserve, as discussed in Taylor (2011). They require differing treatments of for the estimation of mean square error of prediction. Both families of model may be formulated as generalized linear models. This is not widely appreciated of the Mack model. The monograph commences with the identification of these two families and their respective GLM formulations.&lt;/p&gt;
+&lt;p&gt;GLM formulation naturally invites the use of a bootstrap to estimate prediction error. The bootstrap estimates the entire distribution of loss reserve rather than just the mean square error of prediction obtainable from Mack’s algorithm. The monograph discusses both parametric and semi-parametric forms of the GLM bootstrap.&lt;/p&gt;
+&lt;p&gt;Emphasis is placed on the use of statistical software to implement the GLM formulation. This formulation and the associated software provide the diagnostics for testing the validity of the model. This aspect is covered by the existing literature but the monograph reviews this material in view of its importance.&lt;/p&gt;
+&lt;p&gt;Practical applications of the chain ladder often depart from the strict model. There are a number of causes but prominent among these are:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;the need to smooth the age-to-age factor tail;&lt;/li&gt;
+&lt;li&gt;the need to give greater weight to more recent data than to older.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;These two matters are considered within the GLM context. The subject of smoothing leads to a discussion of generalized additive models.&lt;/p&gt;
+&lt;p&gt;As regards the second point, the GLM structure is used to test whether or not data are time-homogeneous (as is required by the strict chain ladder model) and, if not, to suggest a procedure for recognising and accommodating time-heterogeneity in the data. This may lead to the common practice of discarding all but the last m diagonals of the claim triangle, but more general approaches are also be considered.&lt;/p&gt;
+&lt;p&gt;As time-heterogeneity is not consistent with the chain ladder model, it amounts to model failure, and is recognizable from the diagnostics introduced above. Various forms of model failure are considered and, in each case, a model extension constructed to deal with it.&lt;/p&gt;
+&lt;p&gt;Finally, extension to several models that go beyond the scope of generalized linear models is discussed.&lt;/p&gt;
+&lt;p&gt;See my &lt;a href=&#34;/post/traditional-style-reserving-using-glms&#34;&gt;blog post&lt;/a&gt; for some R code on how to fit the GLM described in the monograph.&lt;/p&gt;
+&lt;!--
+
+---
+abstract: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis posuere tellus
+  ac convallis placerat. Proin tincidunt magna sed ex sollicitudin condimentum. Sed
+  ac faucibus dolor, scelerisque sollicitudin nisi. Cras purus urna, suscipit quis
+  sapien eu, pulvinar tempor diam. Quisque risus orci, mollis id ante sit amet, gravida
+  egestas nisl. Sed ac tempus magna. Proin in dui enim. Donec condimentum, sem id
+  dapibus fringilla, tellus enim condimentum arcu, nec volutpat est felis vel metus.
+  Vestibulum sit amet erat at nulla eleifend gravida.
+authors:
+- admin
+- Robert Ford
+date: &#34;2015-09-01T00:00:00Z&#34;
+doi: &#34;&#34;
+featured: false
+image:
+  caption: &#39;Image credit: [**Unsplash**](https://unsplash.com/photos/jdD8gXaTZsc)&#39;
+  focal_point: &#34;&#34;
+  preview_only: false
+projects: []
+publication: &#39;*Journal of Source Themes, 1*(1)&#39;
+publication_short: &#34;&#34;
+publication_types:
+- &#34;2&#34;
+publishDate: &#34;2017-01-01T00:00:00Z&#34;
+slides: example
+summary: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis posuere tellus
+  ac convallis placerat. Proin tincidunt magna sed ex sollicitudin condimentum.
+tags:
+- Source Themes
+title: An example journal article
+url_code: &#34;&#34;
+url_dataset: &#34;&#34;
+url_pdf: http://arxiv.org/pdf/1512.04133v1
+url_poster: &#34;&#34;
+url_project: &#34;&#34;
+url_slides: &#34;&#34;
+url_source: &#34;&#34;
+url_video: &#34;&#34;
+---
+
+&lt;div class=&#34;alert alert-note&#34;&gt;
+  &lt;div&gt;
+    Click the &lt;em&gt;Cite&lt;/em&gt; button above to demo the feature to enable visitors to import publication metadata into their reference management software.
+  &lt;/div&gt;
+&lt;/div&gt;
+
+
+&lt;div class=&#34;alert alert-note&#34;&gt;
+  &lt;div&gt;
+    Click the &lt;em&gt;Slides&lt;/em&gt; button above to demo Academic&amp;rsquo;s Markdown slides feature.
+  &lt;/div&gt;
+&lt;/div&gt;
+
+
+Supplementary notes can be added here, including [code and math](https://sourcethemes.com/academic/docs/writing-markdown-latex/).
+
+
+--&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>
