@@ -1,0 +1,1682 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="generator" content="Source Themes Academic 4.7.0">
+
+  
+
+  
+  
+  
+  
+  
+    
+    
+    
+  
+  
+
+  <meta name="author" content="Grainne McGuire">
+
+  
+  
+  
+    
+  
+  <meta name="description" content="Recently, Greg Taylor, Hugh Miller and myself completed some work to develop an approach for fitting a claims reserving model using regularised regression, the LASSO in particular. See the SSRN paper.
+The motivation behind this work is to develop an automatic method to construct a general insurance claims reserving model for data sets with complex features where simple approaches such as the chain ladder fail. In the past we have advocated the use of GLM models for such data sets, but the construction of a GLM is a time-consuming process, even for a skilled analyst.">
+
+  
+  <link rel="alternate" hreflang="en-us" href="/post/self-assembling-claim-reserving-models/">
+
+  
+
+
+  
+  
+  
+  <meta name="theme-color" content="#2962ff">
+  
+
+  
+  
+
+  
+  
+  
+  
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/academicons/1.8.6/css/academicons.min.css" integrity="sha256-uFVgMKfistnJAfoCUQigIl+JfUaP47GrRKjf6CTPVmw=" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.0-1/css/all.min.css" integrity="sha256-4w9DunooKSr3MFXHXWyFER38WmPdm361bQS/2KUWZbU=" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css" integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin="anonymous">
+
+    
+    
+    
+      
+    
+    
+      
+      
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.10/styles/github.min.css" crossorigin="anonymous" title="hl-light">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.10/styles/github.min.css" crossorigin="anonymous" title="hl-dark" disabled>
+      
+    
+
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.5.1/leaflet.css" integrity="sha256-SHMGCYmST46SoyGgo4YR/9AlK1vf3ff84Aq9yK4hdqM=" crossorigin="anonymous">
+    
+
+    
+
+    
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/lazysizes/5.1.2/lazysizes.min.js" integrity="sha256-Md1qLToewPeKjfAHU1zyPwOutccPAm5tahnaw7Osw0A=" crossorigin="anonymous" async></script>
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+        
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+
+  
+
+  
+  
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Montserrat:400,700%7CRoboto:400,400italic,700%7CRoboto+Mono&display=swap">
+  
+
+  
+  
+  
+  
+  <link rel="stylesheet" href="/css/academic.css">
+
+  
+
+
+
+
+  
+
+
+  
+
+  <link rel="manifest" href="/index.webmanifest">
+  <link rel="icon" type="image/png" href="/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_32x32_fill_lanczos_center_2.png">
+  <link rel="apple-touch-icon" type="image/png" href="/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_192x192_fill_lanczos_center_2.png">
+
+  <link rel="canonical" href="/post/self-assembling-claim-reserving-models/">
+
+  
+  
+  
+  
+  
+    
+    
+  
+  
+  <meta property="twitter:card" content="summary">
+  
+  <meta property="og:site_name" content="GMG">
+  <meta property="og:url" content="/post/self-assembling-claim-reserving-models/">
+  <meta property="og:title" content="Self-assembling claim reserving models | GMG">
+  <meta property="og:description" content="Recently, Greg Taylor, Hugh Miller and myself completed some work to develop an approach for fitting a claims reserving model using regularised regression, the LASSO in particular. See the SSRN paper.
+The motivation behind this work is to develop an automatic method to construct a general insurance claims reserving model for data sets with complex features where simple approaches such as the chain ladder fail. In the past we have advocated the use of GLM models for such data sets, but the construction of a GLM is a time-consuming process, even for a skilled analyst."><meta property="og:image" content="/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_2.png">
+  <meta property="twitter:image" content="/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_2.png"><meta property="og:locale" content="en-us">
+  
+    
+      <meta property="article:published_time" content="2019-05-31T00:00:00&#43;00:00">
+    
+    <meta property="article:modified_time" content="2019-05-31T00:00:00&#43;00:00">
+  
+
+  
+
+
+    
+
+
+
+
+
+
+  
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/post/self-assembling-claim-reserving-models/"
+  },
+  "headline": "Self-assembling claim reserving models",
+  
+  "datePublished": "2019-05-31T00:00:00Z",
+  "dateModified": "2019-05-31T00:00:00Z",
+  
+  "author": {
+    "@type": "Person",
+    "name": "Grainne McGuire"
+  },
+  
+  "publisher": {
+    "@type": "Organization",
+    "name": "GMG",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_192x192_fill_lanczos_center_2.png"
+    }
+  },
+  "description": "Recently, Greg Taylor, Hugh Miller and myself completed some work to develop an approach for fitting a claims reserving model using regularised regression, the LASSO in particular. See the SSRN paper.\nThe motivation behind this work is to develop an automatic method to construct a general insurance claims reserving model for data sets with complex features where simple approaches such as the chain ladder fail. In the past we have advocated the use of GLM models for such data sets, but the construction of a GLM is a time-consuming process, even for a skilled analyst."
+}
+</script>
+
+  
+
+  
+
+
+  
+
+
+  
+
+
+
+
+
+  <title>Self-assembling claim reserving models | GMG</title>
+
+</head>
+
+<body id="top" data-spy="scroll" data-offset="70" data-target="#TableOfContents" >
+
+  <aside class="search-results" id="search">
+  <div class="container">
+    <section class="search-header">
+
+      <div class="row no-gutters justify-content-between mb-3">
+        <div class="col-6">
+          <h1>Search</h1>
+        </div>
+        <div class="col-6 col-search-close">
+          <a class="js-search" href="#"><i class="fas fa-times-circle text-muted" aria-hidden="true"></i></a>
+        </div>
+      </div>
+
+      <div id="search-box">
+        
+        <input name="q" id="search-query" placeholder="Search..." autocapitalize="off"
+        autocomplete="off" autocorrect="off" spellcheck="false" type="search">
+        
+      </div>
+
+    </section>
+    <section class="section-search-results">
+
+      <div id="search-hits">
+        
+      </div>
+
+    </section>
+  </div>
+</aside>
+
+
+  
+
+
+
+
+
+
+
+<nav class="navbar navbar-expand-lg navbar-light compensate-for-scrollbar" id="navbar-main">
+  <div class="container">
+
+    
+    <div class="d-none d-lg-inline-flex">
+      <a class="navbar-brand" href="/">GMG</a>
+    </div>
+    
+
+    
+    <button type="button" class="navbar-toggler" data-toggle="collapse"
+            data-target="#navbar-content" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
+    <span><i class="fas fa-bars"></i></span>
+    </button>
+    
+
+    
+    <div class="navbar-brand-mobile-wrapper d-inline-flex d-lg-none">
+      <a class="navbar-brand" href="/">GMG</a>
+    </div>
+    
+
+    
+    
+    <div class="navbar-collapse main-menu-item collapse justify-content-start" id="navbar-content">
+
+      
+      <ul class="navbar-nav d-md-inline-flex">
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+          
+          
+          
+            
+          
+          
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/#hero"><span>Featured</span></a>
+        </li>
+
+        
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+          
+          
+          
+            
+          
+          
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/#about"><span>About</span></a>
+        </li>
+
+        
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+          
+          
+          
+            
+          
+          
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/#posts"><span>Posts</span></a>
+        </li>
+
+        
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+          
+          
+          
+            
+          
+          
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/#publications"><span>Publications</span></a>
+        </li>
+
+        
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+          
+          
+          
+            
+          
+          
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/#contact"><span>Contact</span></a>
+        </li>
+
+        
+        
+
+      
+
+        
+      </ul>
+    </div>
+
+    <ul class="nav-icons navbar-nav flex-row ml-auto d-flex pl-md-2">
+      
+      <li class="nav-item">
+        <a class="nav-link js-search" href="#"><i class="fas fa-search" aria-hidden="true"></i></a>
+      </li>
+      
+
+      
+      <li class="nav-item">
+        <a class="nav-link js-dark-toggle" href="#"><i class="fas fa-moon" aria-hidden="true"></i></a>
+      </li>
+      
+
+      
+
+    </ul>
+
+  </div>
+</nav>
+
+
+  <article class="article">
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+  
+  
+<div class="article-container pt-3">
+  <h1>Self-assembling claim reserving models</h1>
+
+  
+
+  
+    
+
+
+<div class="article-metadata">
+
+  
+  
+
+  
+  <span class="article-date">
+    
+    
+      
+    
+    May 31, 2019
+  </span>
+  
+
+  
+
+  
+  <span class="middot-divider"></span>
+  <span class="article-reading-time">
+    23 min read
+  </span>
+  
+
+  
+  
+  
+
+  
+  
+  <span class="middot-divider"></span>
+  <span class="article-categories">
+    <i class="fas fa-folder mr-1"></i><a href="/categories/reserving/">Reserving</a></span>
+  
+
+</div>
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+</div>
+
+
+
+  <div class="article-container">
+
+    <div class="article-style">
+      
+
+
+<!-- output formats in the _output.yml file -->
+<p>Recently, Greg Taylor, Hugh Miller and myself completed some work to develop an approach for fitting a claims reserving model using regularised regression, the LASSO in particular. See the <a href="/publication/sagacious">SSRN paper</a>.</p>
+<p>The motivation behind this work is to develop an automatic method to construct a general insurance claims reserving model for data sets with complex features where simple approaches such as the chain ladder fail. In the past we have advocated the use of GLM models for such data sets, but the construction of a GLM is a time-consuming process, even for a skilled analyst. Our aim was to develop a procedure that produced a model similar to a GLM, but using machine learning techniques. This approach has performed well - as may be seen from the charts towards the end of this example, which show that the fitted curves can track the underlying specification quite well, even in the presence of significant noise, or difficult to detect interactions.</p>
+<p>The paper fills in the details around the approach, so they will not be repeated here. Instead, this will focus on illustrating the use of the LASSO in claims reserving by fitting the model to one of the synthetic data examples discussed in the paper. I will be working through a fully worked example with all R code available. To reduce dependencies on external libraries, I have carried out the work in base R as much as possible.</p>
+<p>If you want to access the underlying Rnotebook directly, you may access it at:</p>
+<ul>
+<li><a href="https://github.com/grainnemcguire/code_snippets/blob/master/R/2019-05-31-self-assembling-claim-reserving-models.Rmd">2019-05-31-self-assembling-claim-reserving-models.Rmd</a>.</li>
+</ul>
+<div id="introduction-to-the-example" class="section level1">
+<h1>Introduction to the example</h1>
+<p>In our paper we investigate the use of the LASSO using four synthetic (i.e. simulated) data sets as well as a real data set. This worked example will use the third simulated data set. the specifications for this data set are given in Section 4.2.1 of the paper. The main points to note are that this data set :</p>
+<ul>
+<li>is a 40x40 triangle, with</li>
+<li>accident and development period effects</li>
+<li>calendar period effects (i.e. superimposed inflation)</li>
+<li>an step-interaction between accident and development period for accident periods greater than 17 and development periods greater than 20 (note this affects only 10 cells of the triangle)</li>
+</ul>
+</div>
+<div id="r-code" class="section level1">
+<h1>R code</h1>
+<div id="setup" class="section level2">
+<h2>Setup</h2>
+<p>First we must open R and load any libraries required. As noted above, I will use base R as much as possible so there are only two additional libraries required:</p>
+<ul>
+<li><code>glmnet</code> - this is the library we used to implement the LASSO model. References are in our paper.</li>
+<li><code>ggplot2</code> - for producing graphs.</li>
+</ul>
+<pre class="r"><code>library(glmnet)
+## Loading required package: Matrix
+## Loaded glmnet 3.0-2
+library(ggplot2)
+
+options(&quot;scipen&quot;=99)
+</code></pre>
+</div>
+<div id="generating-the-synthetic-data-set" class="section level2">
+<h2>Generating the synthetic data set</h2>
+<p>First we need a data set. The code below, using a seed of 130 produces the data set used in the paper.</p>
+<p>Before we generate the data, we need to create a small utility function which will be widely used - it takes a vector <em>var</em> and produces a spline piece between <code>start</code> and <code>stop</code> - flat (and 0) up to <code>start</code>, thereafter increasing to <code>stop</code> and then levelling out at this point. This is used both in the data generation and in the generation of basis functions for the LASSO.</p>
+<pre class="r"><code>LinearSpline &lt;- function(var, start, stop){
+    pmin(stop - start, pmax(0, var - start))
+}</code></pre>
+<p>The code below generates the data set as specified in our paper. If you want to use our data set, use a seed of 130. Otherwise, use different seeds to produce different data sets.</p>
+<pre class="r"><code># initialise the seed for reproducibilty
+set.seed(130)
+numperiods &lt;- 40
+
+#periods
+kk &lt;- rep(1:numperiods, each = numperiods) #AQ
+jj &lt;- rep(1:numperiods, times= numperiods) #DQ
+tt &lt;- kk+jj-1 # PQ
+
+
+# make a function of the SI effect to make it easier to read 
+gammafunc &lt;- function(t){
+    gg &lt;- 
+        ifelse( t&lt;=12, gg &lt;- 0.0075*LinearSpline(t,1,12),
+                ifelse(t&lt;=24,  gg &lt;- 0.0075*LinearSpline(12,1,12) + 0.001* (t-12)*(t-11)/2,
+                       ifelse(t&lt;=32, gg &lt;- 0.0075*LinearSpline(12,1,12) + 0.001* (24-12)*(24-11)/2,
+                           ifelse(t&lt;=40, gg &lt;- 0.0075*LinearSpline(12,1,12) + 0.001* (24-12)*(24-11)/2 + 0.002*(t-32)*(t-31)/2,
+                               0.0075*LinearSpline(12,1,12) + 0.001* (24-12)*(24-11)/2 + 0.002*(40-32)*(40-31)/2
+                           ))))
+    1*gg  #can scale up shape here if desired
+}
+
+alpha &lt;- log(100000)+0.1*LinearSpline(kk,1,15)+0.2*LinearSpline(kk,15,20) - 0.05*LinearSpline(kk,30,40) 
+beta  &lt;- (16/3 - 1)*log(jj)- (1/3)*jj  # a is 16/3, b is 1/3 
+gamma &lt;- gammafunc(tt)
+mu &lt;- exp( alpha + beta + gamma + 0.3*beta*ifelse(kk&gt;16 &amp; jj&gt;20,1,0))  # need to check
+
+varbase &lt;- (0.3 * mu[  kk==1 &amp; jj ==16] )^2 # can scale variance up and down here
+CC  &lt;-  varbase / mu[  kk==1 &amp; jj ==16]
+
+vars   &lt;- CC*mu
+tausq  &lt;- log (vars / (mu^2) + 1)
+
+Y &lt;- exp( rnorm( numperiods^2, mean = log(mu)-0.5*tausq , sd = sqrt(tausq)  ) )
+
+train_ind&lt;-(tt&lt;=numperiods)  
+
+synthetic_data&lt;-data.frame(Y, kk, jj, tt, mu, train_ind )
+colnames(synthetic_data)&lt;-c(&quot;Y&quot;, &quot;acc&quot;, &quot;dev&quot;, &quot;cal&quot;, &quot;mu&quot;, &quot;train_ind&quot;)
+
+
+# clean-up
+rm(Y, kk, jj, tt, mu, train_ind)</code></pre>
+<p><br><br>
+Let’s have a look at the data</p>
+<pre class="r"><code>head(synthetic_data)</code></pre>
+<pre><code>##            Y acc dev cal          mu train_ind
+## 1   242671.2   1   1   1    71653.13      TRUE
+## 2   164001.3   1   2   2  1042775.62      TRUE
+## 3  3224477.8   1   3   3  4362599.77      TRUE
+## 4  3682530.8   1   4   4 10955670.09      TRUE
+## 5 10149368.6   1   5   5 20800545.12      TRUE
+## 6 28578274.7   1   6   6 33089166.75      TRUE</code></pre>
+<pre class="r"><code>tail(synthetic_data)</code></pre>
+<pre><code>##              Y acc dev cal        mu train_ind
+## 1595 125261750  40  35  74 109039367     FALSE
+## 1596  62657370  40  36  75  82853302     FALSE
+## 1597  63467681  40  37  76  62682720     FALSE
+## 1598  26041979  40  38  77  47227843     FALSE
+## 1599  33947274  40  39  78  35444881     FALSE
+## 1600  37258687  40  40  79  26503298     FALSE</code></pre>
+<p>The points to note about this data frame are:</p>
+<ul>
+<li><code>Y</code> is the comumn containing the data - assumed to be incremental claims payments here</li>
+<li><code>acc</code>, <code>dev</code> and <code>cal</code> are the columns with the accident, development and calendar period labels. Note that development period is numbered from 1.</li>
+<li><code>mu</code> contains the values for <span class="math inline">\(\mu\)</span>, the true underlying mean value according to the model specifications</li>
+<li><code>train_ind</code> is a TRUE/FALSE vector. It is TRUE when the observation is in the past, a.k.a. the training data set and FALSE for future observations (unlike real data, we have the future available for a simulated data set)</li>
+</ul>
+<p><br><br><br></p>
+</div>
+<div id="specifying-the-lasso-model" class="section level2">
+<h2>Specifying the LASSO model</h2>
+<p>The LASSO model requires data (which we have), basis functions or regressors and model settings for the LASSO procedure. Unlike many regression problems, we actually only have 3 fundamental regressors - accident, development and calendar periods. A key part of our paper was how to expand these into a flexible set of basis functions, capable of capturing a variety of shapes in the model experience.</p>
+<p>In a nutshell, the approach in our paper sets out:</p>
+<ul>
+<li>the use of ramp and interactions of indicator (or heaviside) functions to capture a range of experience</li>
+<li>scaling factors for each of these.</li>
+</ul>
+<p>Since our process is intended to be automatic, we included all functions of accident, development and calendar periods into our synthetic data models, even though that introduces correlations between variables, and examined performance on that basis. For real problems (as in the real data example in the paper) we would recommend more discernment in the selection of which of the effects to include.</p>
+<p><br><br></p>
+<div id="scaling" class="section level3">
+<h3>Scaling</h3>
+<p>For now, we are working to replicate the model for synthetic data set 3 so we include all possible functions (and indeed, this data set has accident, development and calendar period effects as well as an interaction). The first step is to calculate the scaling factors for each function derived from each of the three fundamental regressors. As per the paper we use <span class="math inline">\(\rho\)</span> scaling which is calculated as <span class="math inline">\(\sum{\frac{(x-\bar{x})^2}{n}}\)</span> where <span class="math inline">\(\bar{x}\)</span> is the mean of the regressor <span class="math inline">\(x\)</span> and <span class="math inline">\(n\)</span> is the number of elements in the regressor.</p>
+<p>For this synthetic data set, it is important to remember that in the real world, the future data will not be available. So the fundamental vectors are those containing past (or training) data only.</p>
+<p>We also need to calculate the scaling for each of the three regressors, so for coding efficiency and to reduce the risk of bugs, we first write a little function to do the calculations.</p>
+<p>Note that this scaling is a crucial component to the successful implementation of the reserving LASSO. The paper has more details, but basically the size of the parameters has a significant influence on whether they are included in a regularised regression, so if basis functions are on different scales, then this will influence their inclusion in the model.</p>
+<pre class="r"><code># function for ease
+GetScaling &lt;- function(vec) {
+  fn &lt;- length(vec)
+  fm &lt;- mean(vec)
+  fc &lt;- vec - fm
+  rho_factor &lt;- ((sum(fc^2))/fn)^0.5
+}</code></pre>
+<p>Now we apply this function to each of the three fundamental regressors (limited to the training or past data) and store the results in a list.</p>
+<pre class="r"><code>synthetic_data_train&lt;-subset(synthetic_data, train_ind==TRUE)
+
+rho_factor_list &lt;- vector(mode=&quot;list&quot;, length=3)
+names(rho_factor_list) &lt;- c(&quot;acc&quot;, &quot;dev&quot;, &quot;cal&quot;)
+
+for (v in c(&quot;acc&quot;, &quot;dev&quot;, &quot;cal&quot;)){
+  rho_factor_list[[v]] &lt;- GetScaling(synthetic_data_train[[v]])
+}
+
+
+print(rho_factor_list)</code></pre>
+<pre><code>## $acc
+## [1] 9.539392
+## 
+## $dev
+## [1] 9.539392
+## 
+## $cal
+## [1] 9.539392</code></pre>
+<p>The factors are all equal in this case. In hindsight this makes sense - we have the complete 40 x 40 past triangle, and all regressors are numbered from 1, so all three regressors are permutations of the same numbers.</p>
+<p><br><br></p>
+</div>
+<div id="basis-functions" class="section level3">
+<h3>Basis functions</h3>
+<p>Our recommended set of basis functions include:</p>
+<ul>
+<li>ramp functions for main effects:
+<ul>
+<li><span class="math inline">\(R_j(i) = \max(j-i, 0)\)</span> for <span class="math inline">\(j=\)</span> accident, development and calendar periods and <span class="math inline">\(i=1, 2, ..., 39\)</span></li>
+</ul></li>
+<li>interactions of the heaviside indicator functions:
+<ul>
+<li><span class="math inline">\(H_j(i) = I(j&gt;=i)\)</span>, i.e. all combinations of <span class="math inline">\(H_{acc}(i) * H_{dev}(k)\)</span>, <span class="math inline">\(H_{acc}(i) * H_{cal}(k)\)</span>, <span class="math inline">\(H_{dev}(i) * H_{cal}(k)\)</span>.</li>
+</ul></li>
+</ul>
+<p><br></p>
+<div id="main-effects---ramp-functions" class="section level4">
+<h4>Main effects - ramp functions</h4>
+<p>To calculate the ramps we first write a function to do this, since we need to repeat this three times. glmnet expects a matrix of values for the basis functions, so we create a matrix rather than a data.frame. Furthermore, to ensure speed, we preallocate the space to store all the basis functions before running a loop to produce all the ramp functions (many people are scared of loops in R finding them slow, but often this is because they do not preallocate memory beforehand to store the results of the loop)</p>
+<pre class="r"><code>GetRamps &lt;- function(vec, vecname, np, scaling){
+  
+  # vec = fundamental regressor
+  # vecname = name of regressor
+  # np = number of periods
+  # scaling = scaling factor to use
+  
+  # pre-allocate the matrix to hold the results for speed/efficiency
+  n &lt;- length(vec)
+  nramps &lt;- (np-1)
+  
+  mat &lt;- matrix(data=NA, nrow=n, ncol=nramps)
+  cnames &lt;- vector(mode=&quot;character&quot;, length=nramps)
+  
+
+  col_indx &lt;- 0
+
+  for (i in 1:(np-1)){
+    col_indx &lt;- col_indx + 1
+
+    mat[, col_indx] &lt;- LinearSpline(vec, i, 999) / scaling
+    cnames[col_indx] &lt;- paste0(&quot;L_&quot;, i, &quot;_999_&quot;, vecname)
+  }
+  
+  colnames(mat) &lt;- cnames
+  
+  return(mat)
+}</code></pre>
+<p>Now let’s run the function 3 times to get each set of ramp functions and combine them at the end. Note that we produce ramps for the <strong>entire</strong> data set, past and future. This leads to a 1600 x 117 (39*3) matrix.</p>
+<pre class="r"><code>main_effects_acc &lt;- GetRamps(vec = synthetic_data[[&quot;acc&quot;]], vecname = &quot;acc&quot;, 
+                             np = numperiods, scaling = rho_factor_list[[&quot;acc&quot;]])
+main_effects_dev &lt;- GetRamps(vec = synthetic_data[[&quot;dev&quot;]], vecname = &quot;dev&quot;, 
+                             np = numperiods, scaling = rho_factor_list[[&quot;dev&quot;]])
+main_effects_cal &lt;- GetRamps(vec = synthetic_data[[&quot;cal&quot;]], vecname = &quot;cal&quot;, 
+                             np = numperiods, scaling = rho_factor_list[[&quot;cal&quot;]])
+    
+main_effects &lt;- cbind(main_effects_acc, main_effects_dev, main_effects_cal)
+
+print(dim(main_effects))</code></pre>
+<pre><code>## [1] 1600  117</code></pre>
+<p><br></p>
+</div>
+</div>
+<div id="interaction-effects---heaviside-functions" class="section level3">
+<h3>Interaction effects - heaviside functions</h3>
+<p>We follow a similar approach to the above - write a function since we need to call it 3 times. It is even more important to preallocate memory here before looping to create interactions because of the number of these. Without this, the loop would need to copy an ever-growing matrix each time, thereby significantly slowing down runtimes. Our approach of slotting values into reserved space is far more efficient.</p>
+<p>Here’s the function:</p>
+<pre class="r"><code>GetInts &lt;- function(vec1, vec2, vecname1, vecname2, np, scaling1, scaling2) {
+  
+  # pre-allocate the matrix to hold the results for speed/efficiency
+  n &lt;- length(vec1)
+  nints &lt;- (np-1)*(np-1)
+  
+  mat &lt;- matrix(data=NA_real_, nrow=n, ncol=nints)
+  cnames &lt;- vector(mode=&quot;character&quot;, length=nints)
+  
+
+  col_indx &lt;- 0
+
+  for (i in 2:np){
+    
+    ivec &lt;- LinearSpline(vec1, i-1, i) / scaling1
+    iname &lt;- paste0(&quot;I_&quot;, vecname1, &quot;_ge_&quot;, i)
+    
+    if (length(ivec[is.na(ivec)]&gt;0)) print(paste(&quot;NAs in ivec for&quot;, i))
+    
+    for (j in 2:np){
+      col_indx &lt;- col_indx + 1  
+      mat[, col_indx] &lt;- ivec * LinearSpline(vec2, j-1, j) / scaling2
+      cnames[col_indx] &lt;- paste0(iname, &quot;*I_&quot;, vecname2, &quot;_ge_&quot;, j)
+      
+      jvec &lt;- LinearSpline(vec2, j-1, j) / scaling2
+      if (length(jvec[is.na(jvec)]&gt;0)) print(paste(&quot;NAs in jvec for&quot;, j))
+
+    }
+  }
+  
+  colnames(mat) &lt;- cnames
+  
+  return(mat)
+
+  
+}</code></pre>
+<p>Now we call it and check the dimensions - 1600 x 4563(! 3 * 39 * 39).:</p>
+<pre class="r"><code>int_effects &lt;- cbind(
+  GetInts(vec1=synthetic_data[[&quot;acc&quot;]], vecname1=&quot;acc&quot;, scaling1=rho_factor_list[[&quot;acc&quot;]], np=numperiods, 
+                       vec2=synthetic_data[[&quot;dev&quot;]], vecname2=&quot;dev&quot;, scaling2=rho_factor_list[[&quot;dev&quot;]]),
+
+    GetInts(vec1=synthetic_data[[&quot;dev&quot;]], vecname1=&quot;dev&quot;, scaling1=rho_factor_list[[&quot;dev&quot;]], np=numperiods, 
+                       vec2=synthetic_data[[&quot;cal&quot;]], vecname2=&quot;cal&quot;, scaling2=rho_factor_list[[&quot;cal&quot;]]),
+  
+    GetInts(vec1=synthetic_data[[&quot;acc&quot;]], vecname1=&quot;acc&quot;, scaling1=rho_factor_list[[&quot;acc&quot;]], np=numperiods, 
+                       vec2=synthetic_data[[&quot;cal&quot;]], vecname2=&quot;cal&quot;, scaling2=rho_factor_list[[&quot;cal&quot;]])
+
+)
+
+
+print(dim(int_effects))</code></pre>
+<pre><code>## [1] 1600 4563</code></pre>
+<p>Finally combine the main and interactions effects into a single matrix - <em>varset</em>. Also save a vector containing the training (past) data indicator and get the number of main and interaction effects.</p>
+<pre class="r"><code>varset &lt;- cbind(main_effects, int_effects)
+
+train_ind &lt;- synthetic_data[[&quot;train_ind&quot;]]
+
+num_main_effects &lt;- ncol(main_effects)
+num_interactions &lt;- ncol(int_effects)</code></pre>
+<p><br><br></p>
+</div>
+<div id="lasso-setup" class="section level3">
+<h3>LASSO setup</h3>
+<p>The <code>glmnet</code> package has two functions: <code>glmnet</code> and <code>cv.glmnet</code>. <code>glmnet</code> fits a regularised regression model while <code>cv.glmnet</code> fits using cross validation. We make use of both functions, first <code>glmnet</code> to get a vector of LASSO penalties (referred to as <span class="math inline">\(\lambda\)</span>), then <code>cv.glmnet</code> using the <span class="math inline">\(\lambda\)</span>s from <code>glmnet</code> in the cross validation process.</p>
+<p>In addition to the data and basis functions, <code>glmnet</code> and <code>cv.glmnet</code> have a number of tuning parameters. These include:</p>
+<ul>
+<li><p>A set of values for <span class="math inline">\(\lambda\)</span>, the regularision penalty. We use the <span class="math inline">\(\lambda\)</span> vector estimated by <code>glmnet</code> and then extend it further to ensure that we have a comprehensive range of <span class="math inline">\(\lambda\)</span> values for the cross-validation exercise.</p></li>
+<li><p>penalty factors: this is a basis function specific penalty factor so provides the functionality to have different penalties for the different basis functions, i.e. if <span class="math inline">\(pf\)</span> is the vector of penalty functions, then <span class="math inline">\(\lambda {pf}\)</span> is the set of penalty factors used. Here we use the default of the same scaling for all functions (factors of 1 throughout), but we set up a penalty factor vector below in case you would like to experiment with it - e.g. to make interactions less or more likely to be used you could increase/decrease the penalty for interactions.</p></li>
+<li><p><code>pmax</code> - the maximum number of variables ever to be non-zero in a model</p></li>
+<li><p><code>dfmax</code> - maximum number of variables in a model</p></li>
+<li><p><code>family</code> - the response type to use. Of the options offered by the <code>glmnet</code> package, the Poisson is the best selection for a claims reserving model.</p></li>
+</ul>
+<p>The settings we used for the latter 3 are below.</p>
+<pre class="r"><code>penalty_factor &lt;- c( rep(1,num_main_effects), rep(1, num_interactions))
+
+my_pmax &lt;- numperiods^2   # max number of variables ever to be nonzero
+my_dfmax &lt;- numperiods*10  #max number of vars in the model</code></pre>
+<p>To get the vector <span class="math inline">\(\lambda\)</span> values to use in the cross validation, run <code>glmnet</code> as below. Note that <code>alpha=1</code> makes it fit a LASSO.
+We have also increased the maximum number of iterations to 200000 since convergence can be slow in this example. The code takes about 13-15 sec on my computer.</p>
+<p>Note we set the <code>standardize</code> argument to false - this is because we use our own standardisation for the basis functions.</p>
+<pre class="r"><code>time1 &lt;- Sys.time()
+
+pre_fit &lt;- glmnet(x = varset[train_ind,], 
+                  y = synthetic_data$Y[train_ind], 
+                  family = &quot;poisson&quot;, 
+                  nlambda = 200, 
+                  thresh = 1e-08, 
+                  lambda.min.ratio = 0, 
+                  dfmax = my_dfmax, 
+                  pmax = my_pmax, 
+                  alpha = 1, 
+                  standardize = FALSE, 
+                  penalty.factor = penalty_factor, 
+                  maxit = 200000)
+
+print(paste(&quot;time taken: &quot;, Sys.time() - time1))</code></pre>
+<pre><code>## [1] &quot;time taken:  15.7549350261688&quot;</code></pre>
+<p>The <span class="math inline">\(\lambda\)</span> vector that we actually used in the cross validation implementation of the LASSO is an extended version of the one automatically generated by <code>glmnet</code>. This is to ensure that we do find the minimum CV error point as sometimes it may be beyond the smallest value for <span class="math inline">\(\lambda\)</span> produced by <code>glmnet</code> above.</p>
+<pre class="r"><code>lambdavec &lt;- c(pre_fit$lambda, min(pre_fit$lambda)*(0.85^(1:50)))  # lengthen lambda vector</code></pre>
+</div>
+</div>
+<div id="fitting-the-lasso-model" class="section level2">
+<h2>Fitting the LASSO model</h2>
+<p>We now do the actual fitting using 8-fold cross validation (Rob Tibshirani, who wrote the original statistical paper on LASSO, recommends between 5 and 10 folds). We use <code>lambdavec</code>, rather than letting <code>cv.glmnet</code> estimate its own version. Otherwise the settings are the same.</p>
+<pre class="r"><code>#fit now using CV
+time1 &lt;- Sys.time()
+
+cv_fit &lt;- cv.glmnet(x = varset[train_ind,], 
+                  y = synthetic_data$Y[train_ind], 
+                  family = &quot;poisson&quot;, 
+                  lambda = lambdavec, 
+                  nfolds = 8,
+                  thresh = 1e-08, 
+                  lambda.min.ratio = 0, 
+                  dfmax = my_dfmax, 
+                  pmax = my_pmax, 
+                  alpha = 1, 
+                  standardize = FALSE, 
+                  penalty.factor = penalty_factor, 
+                  maxit = 200000)</code></pre>
+<pre><code>## Warning: from glmnet Fortran code (error code -10195); Number of nonzero
+## coefficients along the path exceeds pmax=1600 at 195th lambda value; solutions
+## for larger lambdas returned</code></pre>
+<pre><code>## Warning: from glmnet Fortran code (error code -10196); Number of nonzero
+## coefficients along the path exceeds pmax=1600 at 196th lambda value; solutions
+## for larger lambdas returned
+
+## Warning: from glmnet Fortran code (error code -10196); Number of nonzero
+## coefficients along the path exceeds pmax=1600 at 196th lambda value; solutions
+## for larger lambdas returned
+
+## Warning: from glmnet Fortran code (error code -10196); Number of nonzero
+## coefficients along the path exceeds pmax=1600 at 196th lambda value; solutions
+## for larger lambdas returned</code></pre>
+<pre><code>## Warning: from glmnet Fortran code (error code -10195); Number of nonzero
+## coefficients along the path exceeds pmax=1600 at 195th lambda value; solutions
+## for larger lambdas returned
+
+## Warning: from glmnet Fortran code (error code -10195); Number of nonzero
+## coefficients along the path exceeds pmax=1600 at 195th lambda value; solutions
+## for larger lambdas returned
+
+## Warning: from glmnet Fortran code (error code -10195); Number of nonzero
+## coefficients along the path exceeds pmax=1600 at 195th lambda value; solutions
+## for larger lambdas returned</code></pre>
+<pre><code>## Warning: from glmnet Fortran code (error code -10196); Number of nonzero
+## coefficients along the path exceeds pmax=1600 at 196th lambda value; solutions
+## for larger lambdas returned
+
+## Warning: from glmnet Fortran code (error code -10196); Number of nonzero
+## coefficients along the path exceeds pmax=1600 at 196th lambda value; solutions
+## for larger lambdas returned</code></pre>
+<pre class="r"><code>print(paste(&quot;time taken for cross validation fit: &quot;, Sys.time() - time1))</code></pre>
+<pre><code>## [1] &quot;time taken for cross validation fit:  3.81268668572108&quot;</code></pre>
+<p><br>
+<em>Eek! Fortran error</em></p>
+<p>Yes, there are Fortran errors. However, if you read the errors, you see that they result from our settings of the <code>pmax</code> variable. Basically models for the 195th and higher values (and since the <span class="math inline">\(\lambda\)</span> values monotonically decrease this means smaller values) in the <code>lambdavec</code> do not return solutions that meet the constraints on <code>pmax</code>.</p>
+<p>Therefore the errors are not an issue as long as the cross validation process has found a minimum value within the range of <span class="math inline">\(\lambda\)</span> values it does consider. <code>cv.glmnet</code> objects have a plot method associated with them which plots the CV fit, so I’ll use it here to see if a minimum value was identified:</p>
+<pre class="r"><code>plot(cv_fit)</code></pre>
+<p><img src="/post/2019-05-31-self-assembling-claim-reserving-models_files/figure-html/unnamed-chunk-16-1.png" width="576" /></p>
+<p>The dashed lines represent the minimum CV model (smaller <span class="math inline">\(\lambda\)</span>) and one a standard deviation away. These are selections commonly used by modellers. So while we only got models for 194 of the original 250 <span class="math inline">\(\lambda\)</span> values input in <code>lambdavec</code>, these models do include a model which produces the minimum CV error (this is actually that the 148th value in <code>lambdavec</code>).</p>
+<p><br>
+Given this is simulated data, we can also look at test error - the graph below shows training, test and CV error.</p>
+<pre class="r"><code>#training error
+predicted_train &lt;- exp(predict(cv_fit, newx = varset[train_ind,], s = cv_fit$lambda))
+error_train &lt;- colMeans(((synthetic_data$Y[train_ind] - predicted_train)^2) / predicted_train )
+
+#test error - note 
+predicted_test &lt;- exp(predict(cv_fit, newx = varset[!train_ind,], s = cv_fit$lambda))
+error_test &lt;- colMeans(((synthetic_data$Y[!train_ind] - predicted_test)^2) / predicted_test )
+
+
+# number of parameters in models (df field)
+# since not all lambdas returned values, use length of cv.glmnet object to get the right value
+use_df &lt;- cv_fit$glmnet.fit$df[1:length(cv_fit$lambda)]
+
+#make a stacked data set suitable for ggplot [ i.e. tidy format]
+dferrorg &lt;- data.frame( 
+  rep(1:length(use_df), times=3), 
+  rep(use_df, times=3), 
+  c(error_train, error_test, cv_fit$cvm)/1000,
+    c( rep(&quot;Training error&quot;, times=length(use_df)), rep(&quot;Test error&quot;, times=length(use_df)), rep(&quot;CV error&quot;, times=length(use_df)) )
+)
+
+colnames(dferrorg)&lt;-c(&quot;model_number&quot;, &quot;num_params&quot;, &quot;Error&quot;, &quot;labels&quot;)  
+
+
+g &lt;- ggplot(data=dferrorg, aes(x=model_number, y=Error, colour=labels))+
+    geom_line(size=1.5, aes(linetype=labels, colour=labels), alpha=0.8)+
+    theme_classic()+
+    theme(legend.position=&quot;bottom&quot;)+
+    labs(x=&quot;Model number&quot;, y=&quot;Error measure (thousands)&quot;)+
+    scale_color_manual(name=&quot;&quot;, values=c(&quot;grey40&quot;, &quot;steelblue3&quot;, &quot;dodgerblue4&quot;))+
+    scale_linetype_manual(name=&quot;&quot;, values=c(&quot;solid&quot;, &quot;dashed&quot;, &quot;dotdash&quot;))+
+    scale_y_log10(labels=scales::comma)+
+    NULL
+
+print(g)</code></pre>
+<p><img src="/post/2019-05-31-self-assembling-claim-reserving-models_files/figure-html/unnamed-chunk-17-1.png" width="576" /></p>
+<p>Happily, low values of the test error align with low CV error values - which is what we would expect to see.</p>
+<p><br><br><br></p>
+</div>
+</div>
+<div id="analysing-the-model" class="section level1">
+<h1>Analysing the model</h1>
+<p>We have used the model corresponding to the minimum CV error in the paper (<code>lambda.min</code> in the <code>cv.glmnet</code> results object, <code>cv_fit</code>. First let’s look at the coefficients in this model.</p>
+<pre class="r"><code>#all coefficients
+coefs_min &lt;- predict(cv_fit, type = &quot;coefficients&quot;, s = cv_fit$lambda.min)
+coefnames &lt;- c(&quot;Intercept&quot;, colnames(varset))
+
+#indicators for non-zero ones
+ind_nz_min&lt;-which(!(coefs_min == 0))
+
+#non-zero coefficient
+nzcoefs_min&lt;-cbind(coefs_min[ind_nz_min,])
+rownames(nzcoefs_min)&lt;-coefnames[ind_nz_min]
+colnames(nzcoefs_min)&lt;-c(&quot;coefficients [min CV model]&quot;)
+
+
+
+print(paste(&quot;Number of non-zero coefficients in min CV model:&quot;, length(nzcoefs_min)))</code></pre>
+<pre><code>## [1] &quot;Number of non-zero coefficients in min CV model: 85&quot;</code></pre>
+<pre class="r"><code>print(nzcoefs_min)</code></pre>
+<pre><code>##                         coefficients [min CV model]
+## Intercept                            12.90849898487
+## L_3_999_acc                          -0.17095448722
+## L_6_999_acc                           0.20215486971
+## L_8_999_acc                          -0.13683788579
+## L_9_999_acc                          -0.00672219229
+## L_10_999_acc                         -0.00726869090
+## L_11_999_acc                         -0.02324636411
+## L_12_999_acc                          0.35610585646
+## L_14_999_acc                         -0.18739286935
+## L_15_999_acc                          0.40181871769
+## L_16_999_acc                          0.87558148156
+## L_18_999_acc                         -0.51019660027
+## L_19_999_acc                         -0.16864836308
+## L_20_999_acc                         -1.43901702819
+## L_21_999_acc                          0.00953486890
+## L_23_999_acc                         -0.79245482450
+## L_24_999_acc                          1.24495942278
+## L_25_999_acc                         -0.93508758199
+## L_26_999_acc                          0.33765206640
+## L_30_999_acc                         -0.70157530992
+## L_33_999_acc                          0.50643663606
+## L_1_999_dev                           8.99462960013
+## L_2_999_dev                          -0.01963809794
+## L_3_999_dev                          -0.07441072105
+## L_4_999_dev                          -3.07653114572
+## L_5_999_dev                          -2.80431602371
+## L_6_999_dev                          -0.68784566665
+## L_7_999_dev                          -0.75804243590
+## L_8_999_dev                          -0.98088683637
+## L_9_999_dev                          -0.22339935171
+## L_10_999_dev                         -0.29737982507
+## L_11_999_dev                         -0.65592216016
+## L_12_999_dev                         -0.35450909252
+## L_13_999_dev                         -0.14473152847
+## L_14_999_dev                          0.04054773673
+## L_15_999_dev                         -0.77588436820
+## L_17_999_dev                         -0.03182413168
+## L_19_999_dev                          0.67859925074
+## L_21_999_dev                         -1.60282884304
+## L_22_999_dev                         -0.36525227453
+## L_24_999_dev                          1.09988151243
+## L_26_999_dev                         -1.09424403563
+## L_27_999_dev                         -0.16350768634
+## L_29_999_dev                          0.88266152283
+## L_35_999_dev                          1.18335691537
+## L_36_999_dev                          3.25213173780
+## L_1_999_cal                           1.18058081966
+## L_8_999_cal                          -0.00180679768
+## L_10_999_cal                         -0.04581220530
+## L_11_999_cal                         -0.00001361552
+## L_13_999_cal                         -0.59595302430
+## L_15_999_cal                          0.35077252912
+## L_16_999_cal                          0.23459204631
+## L_17_999_cal                          0.04789306573
+## L_20_999_cal                          0.01820235408
+## L_21_999_cal                          0.00556136411
+## L_22_999_cal                         -0.05372169105
+## L_24_999_cal                         -0.39892379289
+## L_26_999_cal                          0.12054003466
+## L_28_999_cal                          0.16486699374
+## L_29_999_cal                          0.18948696365
+## L_31_999_cal                          0.13696525004
+## L_32_999_cal                         -0.83932204876
+## L_33_999_cal                          0.45155052203
+## L_34_999_cal                          0.03672725527
+## L_35_999_cal                         -0.23243263792
+## L_36_999_cal                          0.90085214853
+## L_37_999_cal                         -0.54525536224
+## L_38_999_cal                          0.50161020747
+## L_39_999_cal                         -0.74904517614
+## I_acc_ge_17*I_dev_ge_19               5.51496328897
+## I_acc_ge_17*I_dev_ge_20               0.57649429567
+## I_acc_ge_17*I_dev_ge_21             137.29149937434
+## I_acc_ge_18*I_dev_ge_21               6.45465834886
+## I_acc_ge_20*I_dev_ge_17              -1.11190434265
+## I_acc_ge_21*I_dev_ge_9                0.20809357209
+## I_dev_ge_10*I_cal_ge_31              -2.32990834511
+## I_dev_ge_12*I_cal_ge_26              -0.80542294977
+## I_dev_ge_13*I_cal_ge_37               1.16374345492
+## I_dev_ge_14*I_cal_ge_26              -0.44214116825
+## I_dev_ge_22*I_cal_ge_39               1.78463806790
+## I_acc_ge_20*I_cal_ge_36              -0.18540685549
+## I_acc_ge_20*I_cal_ge_37              -4.85927363521
+## I_acc_ge_20*I_cal_ge_38              -2.86273908989
+## I_acc_ge_21*I_cal_ge_31               0.29625560409</code></pre>
+<p>Note the interactions at the end. Are these detecting the interaction that we know is in this simulated data set? We will find out below.</p>
+<p><br></p>
+<p>It is also useful to look at actual and fitted plots for the different predictors. The paper shows a number of these.</p>
+<p>To produce these plots, we first add the column of fitted values to the data.frame holding the data using the <code>predict</code> method for a <code>cv.glmnet</code> object. Our selected model is that corresponding to the minimum CV error, which is corresponds to the <span class="math inline">\(\lambda\)</span> stored by the <code>cv_fit$lambda_min</code> component of the <code>cv.glmnet</code> object.</p>
+<pre class="r"><code>synthetic_data$fitted_lasso&lt;- as.vector(exp(predict(cv_fit, newx = varset, s = cv_fit$lambda.min)) )</code></pre>
+<p>The function below produces the tracking graphs shown in the paper - plot values for all levels of one fundamental predictor holding a second predictor at a fixed value. To help with looking at the data, it also shades the past part of the data in grey.</p>
+<p>Since <code>ggplot2</code> is a tidyverse package, it is easiest to put our data into <em>tidy</em> format (essentially stacked/long output) prior to using <code>ggplot</code>.</p>
+<pre class="r"><code>GraphModelVals&lt;-function(data, primary_predictor, secondary_predictor, secondary_predictor_val, fitted_name, predictor_label){
+    
+    #extract data we want to use
+    use_data &lt;- data[data[[secondary_predictor]] == secondary_predictor_val,]
+
+    
+    # turn into tidy layout - note that we have simulated data, underlying mean, fitted data all to stack.
+    data_tidy &lt;- data.frame( 
+      rep(use_data[[primary_predictor]], times=3),
+      c(use_data[[&quot;Y&quot;]], use_data[[&quot;mu&quot;]], use_data[[fitted_name]]),
+      c(rep(&quot;Simulated&quot;, times=nrow(use_data)), rep(&quot;Underlying&quot;, times=nrow(use_data)), rep(&quot;Lasso&quot;, times=nrow(use_data))) 
+      )
+    colnames(data_tidy) &lt;- c(&quot;predictor&quot;, &quot;values&quot;, &quot;data_labels&quot;)
+    
+    data_tidy$values &lt;- log(data_tidy$values)
+
+    
+    # extract values for past rectangle
+    xmin1 &lt;- min(use_data[[primary_predictor]][use_data$train_ind==TRUE])
+    xmax1 &lt;- max(use_data[[primary_predictor]][use_data$train_ind==TRUE])
+    
+    ymin1 &lt;- min(data_tidy$values)*0.95
+    ymax1 &lt;- max(data_tidy$values)*1.05
+    
+    g &lt;- ggplot(data=data_tidy, aes(x=predictor, y=values, group=data_labels))+
+      geom_line(aes(linetype=data_labels, colour=data_labels, size=data_labels, alpha=data_labels))+
+      scale_colour_manual(name=&quot;&quot;, values=c(&quot;indianred4&quot;, &quot;slategrey&quot;, &quot;slategrey&quot;))+
+      scale_linetype_manual(name=&quot;&quot;, values=c(&quot;solid&quot;, &quot;solid&quot;, &quot;dotted&quot;))+
+      scale_size_manual(name=&quot;&quot;, values=c(2,1,1))+
+      scale_alpha_manual(name=&quot;&quot;, values=c(0.8, 0.5, 0.5))+
+      theme_classic()+
+      annotate(geom=&quot;rect&quot;, xmin=xmin1, xmax=xmax1, ymin=ymin1, ymax=ymax1, alpha=0.1)+
+      theme(legend.position=&quot;bottom&quot;)+
+      labs(x=predictor_label, y=&quot;Log(Payments)&quot;, title=paste(predictor_label, &quot;tracking for&quot;, secondary_predictor, &quot;=&quot;, secondary_predictor_val))
+      
+    
+
+  invisible(list(data=data_tidy, graph=g))
+}</code></pre>
+<p>Now let’s look at development quarter when accident quarter is 20. Remember the step-interaction starts at dev=21 - which we see in the graph.</p>
+<pre class="r"><code>dev_graph_list &lt;- GraphModelVals(data = synthetic_data, 
+                             primary_predictor = &quot;dev&quot;, 
+                             secondary_predictor = &quot;acc&quot;, 
+                             secondary_predictor_val = 20, 
+                             fitted_name = &quot;fitted_lasso&quot;,
+                             predictor_label = &quot;Development quarter&quot;)
+
+
+dev_graph_list$graph</code></pre>
+<p><img src="/post/2019-05-31-self-assembling-claim-reserving-models_files/figure-html/unnamed-chunk-21-1.png" width="576" /></p>
+<p>Similarly we can look at accident quarter tracking when development quarter is 24 and again see the interaction.</p>
+<pre class="r"><code>acc_graph_list &lt;- GraphModelVals(data = synthetic_data, 
+                             primary_predictor = &quot;acc&quot;, 
+                             secondary_predictor = &quot;dev&quot;, 
+                             secondary_predictor_val = 24, 
+                             fitted_name = &quot;fitted_lasso&quot;,
+                             predictor_label = &quot;Accident quarter&quot;)
+
+
+acc_graph_list$graph</code></pre>
+<p><img src="/post/2019-05-31-self-assembling-claim-reserving-models_files/figure-html/unnamed-chunk-22-1.png" width="576" /></p>
+<p>You should, of course, carry out a full model validation exercise on any model prior to use, examining residuals, triangular heat maps and tweak the model if needed.</p>
+<p><br><br><br></p>
+</div>
+<div id="claims-reserves" class="section level1">
+<h1>Claims reserves</h1>
+<p>Finally, let’s get some claims reserve estimates and compare to those from an 8-period chain ladder.</p>
+<p>First let’s calculate the chainladder reserve.</p>
+<pre class="r"><code># cumulative payments on training data set
+synthetic_data_train$Ycum &lt;- unlist(tapply(synthetic_data_train$Y, synthetic_data_train$acc, cumsum))
+
+# calc cl factors using an 8 quarter average
+cl_fac &lt;- numeric(numperiods-1)
+
+for (j in 1:numperiods-1){
+  
+  cl_fac[j] &lt;- sum(subset(synthetic_data_train, dev == j+1 &amp; acc &gt; (numperiods-8-j) &amp; acc &lt;= numperiods-j)$Ycum) / 
+    sum(subset(synthetic_data_train, dev == j &amp; acc &gt; (numperiods-8-j) &amp; acc &lt;= numperiods-j)$Ycum)
+}
+
+
+# accumulate the CL factors
+cl_cum &lt;- cumprod(rev(cl_fac))
+
+# leading diagonal
+leading_diagonal &lt;- subset(synthetic_data_train, cal == numperiods &amp; acc&gt;1)$Ycum
+
+# CL amounts now
+cl_os &lt;- cl_cum * leading_diagonal - leading_diagonal</code></pre>
+<p>Running the code shows that the reserve for accident period 40 is a bit high(!) - so the y-axis scale on any plots may need to be adjusted for display purposes.</p>
+<pre class="r"><code>print(&quot;CL outstanding estimates&quot;)</code></pre>
+<pre><code>## [1] &quot;CL outstanding estimates&quot;</code></pre>
+<pre class="r"><code>head( data.frame(Accident=numperiods:2, os = rev(cl_os/1000000000)))</code></pre>
+<pre><code>##   Accident        os
+## 1       40 488.32119
+## 2       39  13.97485
+## 3       38  21.60132
+## 4       37  17.46894
+## 5       36  21.27673
+## 6       35  22.05057</code></pre>
+<p>We use the <code>tapply</code> function to calculate the outstanding amounts by accident period for the LASSO model as well as the true values (both the “actual” simulated values and the true underlying values).</p>
+<pre class="r"><code>synthetic_data_test &lt;- subset(synthetic_data, train_ind == FALSE)
+
+lasso_os &lt;- tapply(synthetic_data_test$fitted_lasso, synthetic_data_test$acc, sum)
+sim_os &lt;- tapply(synthetic_data_test$Y, synthetic_data_test$acc, sum)
+true_os &lt;- tapply(synthetic_data_test$mu, synthetic_data_test$acc, sum)
+
+
+#combine into a tidy dataset for ggplot
+# add a linetype option to have different linetypes
+compare_os &lt;- data.frame(
+  rep(2:numperiods, times=4), 
+  c(sim_os, lasso_os, cl_os, true_os)/1000000000,
+  c(rep(&quot;Simulated&quot;, times=numperiods-1), rep(&quot;Lasso&quot;, times=numperiods-1), rep(&quot;Chainladder (8 qtr)&quot;, times=numperiods-1), rep(&quot;Underlying&quot;, times=numperiods-1) )
+)
+colnames(compare_os)&lt;-c(&quot;Accident&quot;, &quot;Outstanding&quot;, &quot;data_labels&quot;)</code></pre>
+<p>Here’s a plot of the results (similar to that in the paper). Note that the y-axis is restricted for readability so that the actual chain ladder value for accident period 40 does not display on the graph.</p>
+<pre class="r"><code>os_plot &lt;-
+    ggplot(data=compare_os, aes(x=Accident, y=Outstanding, group=data_labels))+
+    geom_line(aes(colour=data_labels, linetype=data_labels), alpha=0.8, size=0.75)+
+    scale_colour_manual(name=&quot;&quot;, values=c(&quot;steelblue3&quot;, &quot;indianred4&quot;, &quot;slategrey&quot;, &quot;slategrey&quot; ))+
+    scale_linetype_manual(name=&quot;&quot;, values=c(&quot;dashed&quot;, &quot;solid&quot;, &quot;dotted&quot;, &quot;solid&quot; ))+
+    geom_line(data=subset(compare_os, data_labels==&quot;Lasso&quot;), aes(colour=data_labels), size=1.25, alpha=0.8, colour=&quot;indianred4&quot;, linetype=&quot;solid&quot;)+
+  coord_cartesian(ylim=c(0, 40))+
+    theme_classic()+
+    theme(legend.position=&quot;bottom&quot;, legend.title=element_blank())+
+    scale_y_continuous(labels=scales::comma)+
+    labs(x=&quot;Accident quarter&quot;, y=&quot;Amount ($B)&quot;)+
+    NULL
+
+os_plot</code></pre>
+<p><img src="/post/2019-05-31-self-assembling-claim-reserving-models_files/figure-html/unnamed-chunk-26-1.png" width="576" /></p>
+<p>You can see from the graph that - despite the presence of an interaction affecting only a small number of cells, the LASSO model detects and responds appropriately to this change. By contrast, the chain ladder model does not perform so well.</p>
+<p><br><br><br></p>
+</div>
+<div id="conclusion" class="section level1">
+<h1>Conclusion</h1>
+<p>The aim of this article has been to demonstrate the fitting of a claims reserving model using a LASSO approach in R and to produce some of the model diagnostic and results output that a user might wish to examine. If you would like to experiment some more, you could try modifying the synthetic data set code to produce other types of simulated data (such as those in our paper), or try it out on a real data example.</p>
+</div>
+<div id="session-information" class="section level1">
+<h1>Session information</h1>
+<p>To assist with reproducibility, here are details of my R session.</p>
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>## R version 3.6.1 (2019-07-05)
+## Platform: x86_64-w64-mingw32/x64 (64-bit)
+## Running under: Windows 10 x64 (build 18363)
+## 
+## Matrix products: default
+## 
+## locale:
+## [1] LC_COLLATE=English_Australia.1252  LC_CTYPE=English_Australia.1252   
+## [3] LC_MONETARY=English_Australia.1252 LC_NUMERIC=C                      
+## [5] LC_TIME=English_Australia.1252    
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## 
+## other attached packages:
+## [1] ggplot2_3.2.1 glmnet_3.0-2  Matrix_1.2-17
+## 
+## loaded via a namespace (and not attached):
+##  [1] Rcpp_1.0.3       compiler_3.6.1   pillar_1.4.2     iterators_1.0.12
+##  [5] tools_3.6.1      digest_0.6.23    evaluate_0.14    lifecycle_0.1.0 
+##  [9] tibble_2.1.3     gtable_0.3.0     lattice_0.20-38  pkgconfig_2.0.3 
+## [13] rlang_0.4.2      foreach_1.4.7    yaml_2.2.0       blogdown_0.17   
+## [17] xfun_0.11        withr_2.1.2      stringr_1.4.0    dplyr_0.8.3     
+## [21] knitr_1.26       tidyselect_0.2.5 grid_3.6.1       glue_1.3.1      
+## [25] R6_2.4.1         rmarkdown_2.0    bookdown_0.17    farver_2.0.1    
+## [29] purrr_0.3.3      magrittr_1.5     scales_1.1.0     codetools_0.2-16
+## [33] htmltools_0.4.0  assertthat_0.2.1 shape_1.4.4      colorspace_1.4-1
+## [37] labeling_0.3     stringi_1.4.3    lazyeval_0.2.2   munsell_0.5.0   
+## [41] crayon_1.3.4</code></pre>
+</div>
+
+    </div>
+
+    
+
+
+
+<div class="article-tags">
+  
+  <a class="badge badge-light" href="/tags/r/">R</a>
+  
+  <a class="badge badge-light" href="/tags/lasso/">Lasso</a>
+  
+</div>
+
+
+
+<div class="share-box" aria-hidden="true">
+  <ul class="share">
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://twitter.com/intent/tweet?url=/post/self-assembling-claim-reserving-models/&amp;text=Self-assembling%20claim%20reserving%20models" target="_blank" rel="noopener" class="share-btn-twitter">
+          <i class="fab fa-twitter"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://www.facebook.com/sharer.php?u=/post/self-assembling-claim-reserving-models/&amp;t=Self-assembling%20claim%20reserving%20models" target="_blank" rel="noopener" class="share-btn-facebook">
+          <i class="fab fa-facebook"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="mailto:?subject=Self-assembling%20claim%20reserving%20models&amp;body=/post/self-assembling-claim-reserving-models/" target="_blank" rel="noopener" class="share-btn-email">
+          <i class="fas fa-envelope"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://www.linkedin.com/shareArticle?url=/post/self-assembling-claim-reserving-models/&amp;title=Self-assembling%20claim%20reserving%20models" target="_blank" rel="noopener" class="share-btn-linkedin">
+          <i class="fab fa-linkedin-in"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://web.whatsapp.com/send?text=Self-assembling%20claim%20reserving%20models%20/post/self-assembling-claim-reserving-models/" target="_blank" rel="noopener" class="share-btn-whatsapp">
+          <i class="fab fa-whatsapp"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://service.weibo.com/share/share.php?url=/post/self-assembling-claim-reserving-models/&amp;title=Self-assembling%20claim%20reserving%20models" target="_blank" rel="noopener" class="share-btn-weibo">
+          <i class="fab fa-weibo"></i>
+        </a>
+      </li>
+    
+  </ul>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+  
+  
+  
+    
+  
+  
+  
+  <div class="media author-card content-widget-hr">
+    
+
+    <div class="media-body">
+      <h5 class="card-title"><a href="/">Grainne McGuire</a></h5>
+      
+      
+      <ul class="network-icon" aria-hidden="true">
+  
+</ul>
+
+    </div>
+  </div>
+
+
+
+
+
+
+
+
+
+  
+  
+  <div class="article-widget content-widget-hr">
+    <h3>Related</h3>
+    <ul>
+      
+      <li><a href="/publication/sagacious/">Self-assembling insurance claim models using regularized regression and machine learning</a></li>
+      
+    </ul>
+  </div>
+  
+
+
+
+  </div>
+</article>
+
+      
+
+    
+    
+    
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.imagesloaded/4.1.4/imagesloaded.pkgd.min.js" integrity="sha256-lqvxZrPLtfffUl2G/e7szqSvPBILGbwmsGE1MKlOi0Q=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.isotope/3.0.6/isotope.pkgd.min.js" integrity="sha256-CBrpuqrMhXwcLLUd5tvQ4euBHCdh7wGlDfNz8vbu/iI=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.js" integrity="sha256-yt2kYMy0w8AbtF89WXb2P1rfjcP/HTHLT7097U8Y5b8=" crossorigin="anonymous"></script>
+
+      
+
+      
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.10/highlight.min.js" integrity="sha256-1zu+3BnLYV9LdiY85uXMzii3bdrkelyp37e0ZyTAQh0=" crossorigin="anonymous"></script>
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.10/languages/r.min.js"></script>
+        
+      
+
+    
+
+    
+    
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.5.1/leaflet.js" integrity="sha256-EErZamuLefUnbMBQbsEqu1USa+btR2oIlCpBJbyD4/g=" crossorigin="anonymous"></script>
+    
+
+    
+    
+    <script>const code_highlighting = true;</script>
+    
+
+    
+    
+    <script>const isSiteThemeDark = false;</script>
+    
+
+    
+    
+    
+    
+    
+    
+    <script>
+      const search_config = {"indexURI":"/index.json","minLength":1,"threshold":0.3};
+      const i18n = {"no_results":"No results found","placeholder":"Search...","results":"results found"};
+      const content_type = {
+        'post': "Posts",
+        'project': "Projects",
+        'publication' : "Publications",
+        'talk' : "Talks"
+        };
+    </script>
+    
+
+    
+    
+
+    
+    
+    <script id="search-hit-fuse-template" type="text/x-template">
+      <div class="search-hit" id="summary-{{key}}">
+      <div class="search-hit-content">
+        <div class="search-hit-name">
+          <a href="{{relpermalink}}">{{title}}</a>
+          <div class="article-metadata search-hit-type">{{type}}</div>
+          <p class="search-hit-description">{{snippet}}</p>
+        </div>
+      </div>
+      </div>
+    </script>
+    
+
+    
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/3.2.1/fuse.min.js" integrity="sha256-VzgmKYmhsGNNN4Ph1kMW+BjoYJM2jV5i4IlFoeZA9XI=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/jquery.mark.min.js" integrity="sha256-4HLtjeVgH0eIB3aZ9mLYF6E8oU5chNdjU6p6rrXpl9U=" crossorigin="anonymous"></script>
+    
+
+    
+    
+
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+      
+    
+    
+    
+    
+    <script src="/js/academic.min.a8d7005002cb4a052fd6d721e83df9ba.js"></script>
+
+    
+
+
+
+
+
+
+  
+  
+  <div class="container">
+    <footer class="site-footer">
+  
+
+  <p class="powered-by">
+    © Grainne McGuire 2020 <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/">CC BY-NC-SA 3.0</a> &middot; 
+
+    Powered by the
+    <a href="https://sourcethemes.com/academic/" target="_blank" rel="noopener">Academic theme</a> for
+    <a href="https://gohugo.io" target="_blank" rel="noopener">Hugo</a>.
+
+    
+    <span class="float-right" aria-hidden="true">
+      <a href="#" class="back-to-top">
+        <span class="button_icon">
+          <i class="fas fa-chevron-up fa-2x"></i>
+        </span>
+      </a>
+    </span>
+    
+  </p>
+</footer>
+
+  </div>
+  
+
+  
+<div id="modal" class="modal fade" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Cite</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <pre><code class="tex hljs"></code></pre>
+      </div>
+      <div class="modal-footer">
+        <a class="btn btn-outline-primary my-1 js-copy-cite" href="#" target="_blank">
+          <i class="fas fa-copy"></i> Copy
+        </a>
+        <a class="btn btn-outline-primary my-1 js-download-cite" href="#" target="_blank">
+          <i class="fas fa-download"></i> Download
+        </a>
+        <div id="modal-error"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

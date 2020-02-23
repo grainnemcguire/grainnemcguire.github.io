@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>individual claim model | GMG</title>
+    <link>/tags/individual-claim-model/</link>
+      <atom:link href="/tags/individual-claim-model/index.xml" rel="self" type="application/rss+xml" />
+    <description>individual claim model</description>
+    <generator>Source Themes Academic (https://sourcethemes.com/academic/)</generator><language>en-us</language><copyright>© Grainne McGuire 2020 [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/)</copyright><lastBuildDate>Mon, 01 Sep 2008 00:00:00 +0000</lastBuildDate>
+    <image>
+      <url>/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_2.png</url>
+      <title>individual claim model</title>
+      <link>/tags/individual-claim-model/</link>
+    </image>
+    
+    <item>
+      <title>Individual claim loss reserving conditioned by case estimates</title>
+      <link>/publication/2008_bootstrap/</link>
+      <pubDate>Mon, 01 Sep 2008 00:00:00 +0000</pubDate>
+      <guid>/publication/2008_bootstrap/</guid>
+      <description>
+
+
+&lt;p&gt;This paper examines various forms of individual claim model for the purpose of loss reserving, with emphasis on the prediction error associated with the reserve. Each form of model is calibrated against a single extensive data set, and then used to generate a forecast of loss reserve and an estimate of its prediction error.&lt;/p&gt;
+&lt;p&gt;The basis of this is a model of the “paids” type, in which the sizes of strictly positive individual finalised claims are expressed in terms of a small number of covariates, most of which are in some way functions of time. Such models can be found in the literature.&lt;/p&gt;
+&lt;p&gt;The purpose of the current paper is to extend these to individual claim “incurreds” models. These are constructed by the inclusion of case estimates in the model’s conditioning information. This form of model is found to involve rather more complexity in its structure.&lt;/p&gt;
+&lt;p&gt;For the particular data set considered here, this did not yield any direct improvement in prediction error. However, a blending of the paids and incurreds models did so.&lt;/p&gt;
+&lt;!--
+
+doi: &#34;&#34;
+
+
+--&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>

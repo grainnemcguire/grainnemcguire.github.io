@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>superimposed inflation | GMG</title>
+    <link>/tags/superimposed-inflation/</link>
+      <atom:link href="/tags/superimposed-inflation/index.xml" rel="self" type="application/rss+xml" />
+    <description>superimposed inflation</description>
+    <generator>Source Themes Academic (https://sourcethemes.com/academic/)</generator><language>en-us</language><copyright>© Grainne McGuire 2020 [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/)</copyright><lastBuildDate>Sun, 16 May 2004 00:00:00 +0000</lastBuildDate>
+    <image>
+      <url>/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_2.png</url>
+      <title>superimposed inflation</title>
+      <link>/tags/superimposed-inflation/</link>
+    </image>
+    
+    <item>
+      <title>Loss reserving with GLMs: a case study</title>
+      <link>/publication/2004_cas_glms/</link>
+      <pubDate>Sun, 16 May 2004 00:00:00 +0000</pubDate>
+      <guid>/publication/2004_cas_glms/</guid>
+      <description>
+
+
+&lt;p&gt;This paper provides a case study in the application of generalised linear models (GLMs) to loss reserving. The study is motivated by approaching the exercise from the viewpoint of an actuary with a predisposition to the application of the chain ladder (CL). The data set under study is seen to violate the conditions for application of the CL in a number of ways. The difficulties of adjusting the CL to allow for these features are noted (Section 3).&lt;/p&gt;
+&lt;p&gt;Regression, and particularly GLM regression, is introduced as a structured and rigorous form of dat analysis. This enables the investigation and modelling of a number of complex features of the data responsible for the violation of the CL conditions. These include superimposed inflation and changes in the rules governing the payment of claims (Sections 4 to 7). The development of the analysis is traced in some detail, as is the production of a range of diagnostics and tests used to compare candidate models and validate the final one.&lt;/p&gt;
+&lt;p&gt;The benefits of this approach are dicussed in Section 8&#34;&lt;/p&gt;
+&lt;!--
+
+doi: &#34;&#34;
+
+
+--&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>
