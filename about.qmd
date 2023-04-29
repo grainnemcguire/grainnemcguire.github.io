@@ -1,0 +1,20 @@
+---
+title: "Grainne McGuire"
+#image: avatar.png
+about: 
+  template: solana   # https://quarto.org/docs/websites/website-about.html#templates
+  #image-shape: rounded
+  #image-width: 15em
+  links: 
+    - text: LinkedIn
+      icon: linkedin
+      href: https://www.linkedin.com/in/grainne-mcguire-19921023/ 
+---
+
+## About
+
+I'm a statistician and actuary, with a long-standing interest in using statistics and machine learning in various areas including insurance, government and corporate work. 
+I'm also concerned about the appropriate and fair use of these tools.
+
+My original background was in statistical molecular genetics where I used statistical models to detect recombination in bacteria and viruses. As part of that I had to write C and C++ programmes to implement my methods which led me to develop a lifelong interest in the use of coding to implement novel statistical techniques.
+

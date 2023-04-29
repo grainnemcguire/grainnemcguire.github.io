@@ -1,0 +1,1198 @@
+---
+title: "Model error via regularised regression - CAS monograph data"
+author: "Grainne McGuire"
+date: '2023-05-04'
+description: "Estimate model error and other error via a Lasso bootstrap"
+categories: ["Machine Learning", "R", "Lasso", "Model Error", "Bootstrap"]
+#image: "reserves.png"
+resources: 
+  - "_functions.R"
+  - "_meyersshi.csv"
+---
+
+
+# Setup
+
+```{r}
+library(here)
+library(data.table)
+library(glmnet)
+library(ggplot2)
+library(scales)
+library(viridis)
+library(DT)
+library(patchwork)
+library(doParallel)
+#library(parallel)
+library(foreach)
+library(conflicted)
+
+# used but not attached via library (excluding dependencies of the packages above)
+# rmutil
+
+options("scipen" = 15)
+
+
+# colours used in plots when not using viridis
+me_colours <- list(
+  blue = "#0088ca",
+  orange = "#f36f21",
+  red = "#ed1c24",
+  yellow = "#ffab00",
+  teal = "#33bec1",
+  grey = "#737373"
+)
+
+ggplot2::theme_set(theme_classic())
+
+
+primary_model <- "lambda.1se"
+
+list_dt_filter_params <- list(
+  main = list(
+    acc  = data.table(period = c(2, 5, 10), cutoff = c(1.33, 1.25, 1.20)),
+    cal  = data.table(period = c(2, 5, 10), cutoff = c(1.10, 1.15, 1.20))
+  ))
+
+# set initial wider gates
+init_scale <- 1.4
+list_dt_filter_params$initial <- list(
+  acc = copy(list_dt_filter_params$main$acc)[, cutoff := cutoff * init_scale],
+  cal = copy(list_dt_filter_params$main$cal)[, cutoff := cutoff * init_scale]
+)
+
+
+```
+
+check for conflicts and resolve if needed
+
+```{r}
+
+conflict_scout()
+conflict_prefer("viridis_pal", "viridis")
+
+```
+
+
+Source functions
+
+```{r}
+
+source(here("post", "2023-05-04-model-error-example", "_functions.R"))
+
+
+```
+
+
+
+
+# Load data
+
+```{r}
+
+# read the data from the website
+# dt <- fread("https://institute-and-faculty-of-actuaries.github.io/mlr-blog/documents/csv/glms_meyershi.csv")
+# getting this error: Error in curl::curl_download(input, tmpFile, mode = "wb", quiet = !showProgress) : HTTP error 404
+
+dt_raw <- fread(here("post", "2023-05-04-model-error-example", "_meyersshi.csv"))
+
+# put into matching form
+dt <- CJ(acc = 1:10, dev = 1:10)
+dt[, cal := acc + dev - 1]
+dt[, past_ind := cal <= 10]
+
+dt[ dt_raw, on=.(acc = acc_year, dev = dev_year), pmts := i.incremental]
+
+```
+
+
+View the data
+
+Now have a look at the data.
+
+```{r}
+#| fig-width: 8
+#| fig-height: 4
+
+p1 <- ggplot(data=dt[past_ind==TRUE,], aes(x=dev, y=log(pmts), colour=as.factor(acc)))+
+  geom_line(linewidth = 1)+
+  scale_colour_viridis_d(begin=1, end=0, alpha=1)+
+  theme(legend.position = "none")+
+  labs(title="Each line is an accident quarter", x="Development quarter", y="log(Payments)")+
+  NULL
+
+p2 <- ggplot(data=dt[past_ind==TRUE,], aes(x=dev, y=log(pmts), colour=as.factor(cal)))+
+  geom_line(linewidth = 1)+
+  scale_colour_viridis_d(begin=0, end=1, alpha=1)+
+  theme(legend.position = "none")+
+  labs(title="Each line is a calendar quarter", x="Development quarter", y="log(Payments)")+
+  NULL
+
+p1 + p2
+
+
+```
+
+# Primary moddel
+
+## Create list
+
+- list object to hold everything
+
+```{r}
+
+list_primary <- list()
+
+list_primary$data <- copy(dt)
+
+```
+
+
+## Basis functions for lasso
+
+Create the basis functions
+
+### Predictor object {-}
+
+Set up a predictor object to give information about each of the predictors so that basis functions can be constructed
+
+predictor object should contain
+
+- `num_predictors`
+- `predictors`
+- `min`
+- `max`
+- `ramp_inc`
+- `scaling` - this uses the `GetScaling()` function and applies to the fundamental vector
+
+The simulated data has `acc` / `dev' / `cal` variables, and is a 40 x 40 triangle.
+
+
+Refer to the previous lasso tutorial for more information on this
+
+
+```{r}
+
+list_primary$predictor_obj <- list()
+
+list_primary$predictor_obj$num_predictors <- 2
+list_primary$predictor_obj$predictors <- c("acc", "dev")  # c("acc", "dev", "cal")
+list_primary$predictor_obj$min <- c(1, 1)
+list_primary$predictor_obj$max <- c(10, 10)
+list_primary$predictor_obj$ramp_inc <- c(1, 1)
+list_primary$predictor_obj$scaling <- c(GetScaling(dt[past_ind==TRUE, acc]), 
+                                        GetScaling(dt[past_ind==TRUE, dev])) 
+                                        #GetScaling(dt[past_ind==TRUE, cal]))
+
+
+
+```
+
+
+
+### Basis functions {-}
+
+
+These are set up below, and then I generate `varset` with all basis functions. For convenience this is separated into the the past (`past_varset`) and future (`fut_varset`) matrix of basis functions.
+
+
+matrix, not data.table
+
+```{r}
+
+list_primary$varset <- vector(mode="list", length=3)
+names(list_primary$varset) <- c("all", "past", "future")
+
+# all data (NB scaling above based on past data only)
+list_primary$varset$all <- GenerateVarset(data = dt,
+                                     predictor_object = list_primary$predictor_obj,
+                                     main_effects_list = c("acc", "dev"),
+                                     int_effects_list = list(c("acc", "dev")))
+                                     # main_effects_list = c("acc", "dev", "cal"),
+                                     # int_effects_list = list(c("acc", "dev"), c("dev", "cal"), c("acc", "cal")))
+
+# past data
+list_primary$varset$past <- list_primary$varset$all[dt[, past_ind], ]
+
+# future data
+list_primary$varset$future <- list_primary$varset$all[!dt[, past_ind], ]
+
+
+```
+
+
+## Lasso fitting
+
+Due to convergence issues with fitting the gamma distribution, we use the Poisson when running `glmnet`.
+
+The way of running glmnet (the hyper-parameters, the separate calls to `glmnet` and `cv.glmnet`) are as was done in the original lasso paper. It provides some reassurance that the $\lambda$ vector will be long enough.
+
+Added another step to expand the lambda vector to get more resolution into posteriors
+
+
+```{r warning=FALSE}
+
+ndevper <- list_primary$predictor_obj$max[[which(list_primary$predictor_obj$predictors == "dev")]]
+#my_pmax <- ndevper^2   # max number of variables ever to be nonzero
+#my_dfmax<-ndevper*10  #max number of vars in the model
+
+set.seed(77)
+
+aaa <- glmnet(x=list_primary$varset$past, 
+              y=dt[past_ind==TRUE, pmts],
+              family = "poisson",
+              #dfmax = my_dfmax, 
+              #pmax = my_pmax, 
+              nlambda = 50, 
+              thresh = 1e-08, 
+              lambda.min.ratio = 0,               
+              alpha=1, 
+              standardize = FALSE,
+              maxit=1000000)
+
+# lengthen the lambda vector
+lambdavec <- c(aaa$lambda, min(aaa$lambda)*(0.85^(1:50)))  # lengthen lambda vector
+
+set.seed(87)
+
+
+aaa1 <- cv.glmnet(x = list_primary$varset$past,
+                  y = dt[past_ind==TRUE, pmts],
+                  family = "poisson",
+                  lambda=lambdavec,
+                  #dfmax = my_dfmax,
+                  #pmax = my_pmax,
+                  thresh = 1e-7,	
+                  alpha = 1,          # review after moving to agg data
+                  standardize = FALSE,
+                  nfolds = 8, 
+                  parallel=FALSE,
+                  relax=FALSE,
+                  trace.it = FALSE,  # TRUE in notebooks leads to unpleasant output
+                  maxit = 1000000)
+
+# expand the lambda vector
+orig_lambdavec <- aaa1$lambda
+
+lambdavec <- NULL
+for(i in 1:(length(orig_lambdavec) - 1)){
+  lambdavec <- c(lambdavec, seq(from = orig_lambdavec[i], to = orig_lambdavec[i+1], length.out = 5))
+}
+
+# remove dups
+lambdavec <- sort( unique(lambdavec), decreasing = TRUE)
+
+
+# seed set to same as above
+set.seed(87)
+
+list_primary$glmnet_obj <- cv.glmnet(x = list_primary$varset$past,
+                                y = dt[past_ind==TRUE, pmts],
+                                family = "poisson",
+                                lambda=lambdavec,
+                                #dfmax = my_dfmax,
+                                #pmax = my_pmax,
+                                thresh = 1e-7,	
+                                alpha = 1,          # review after moving to agg data
+                                standardize = FALSE,
+                                nfolds = 8, 
+                                parallel=FALSE,
+                                relax=FALSE,
+                                trace.it = FALSE,  # TRUE in notebooks leads to unpleasant output
+                                maxit = 1000000)
+
+
+```
+
+
+Cleanup
+
+```{r}
+rm(aaa, aaa1)
+```
+
+
+
+```{r}
+plot(list_primary$glmnet_obj)
+
+```
+
+
+### Scale parameter 
+
+Fit a GLM to the list_primary model to estimate the scale parameter.
+
+Note that `glm()` does not return the best estimate of the scale parameter, so I'm going to use `MASS::gamma.shape()` to get the final estimate.
+
+See https://rdrr.io/cran/MASS/man/gamma.shape.glm.html
+
+
+
+```{r}
+coefs <- predict(list_primary$glmnet_obj, type = "coefficients", s = list_primary$glmnet_obj[[primary_model]])
+coefnames <- c("Intercept", colnames(list_primary$varset$past))
+
+ind_nz_coefs <- which(!(coefs == 0))
+
+# non-zero coefficients
+nz_coefs <- coefs[ind_nz_coefs]
+nz_coefnames <- coefnames[ind_nz_coefs]
+
+# get the past_varset with just these observations
+past_varset_small <- list_primary$varset$past[, nz_coefnames[-1]]   # the -1 removes the intercept
+glm_data = as.data.table(cbind(dt[past_ind==TRUE, .(pmts)], past_varset_small))
+
+glm_formula = as.formula(paste("pmts~", paste(nz_coefnames[-1], collapse = "+")))
+
+
+#glm_formula
+gamma_mod_1 = glm(formula=glm_formula, family = Gamma(link="log"), data = glm_data)
+
+summary(gamma_mod_1)
+
+```
+
+
+Extract the updated scale parameter estimate
+
+```{r}
+list_primary$scale <- round(summary(gamma_mod_1, dispersion = MASS::gamma.dispersion(gamma_mod_1))$dispersion, 4)
+
+print(list_primary$scale)
+
+
+```
+
+
+## Forecasts
+
+Calculate forecasts under both min and 1se models and add these to `list_primary$data`
+
+Make pred field from list_primary model for convenience - used later
+
+get residuals
+
+get reserves
+
+```{r}
+
+# add predictions under the two models for the min, 1se lambda values
+list_primary$data[, lambda.1se := predict(list_primary$glmnet_obj, newx = list_primary$varset$all, type="response", s="lambda.1se")]
+list_primary$data[, lambda.min := predict(list_primary$glmnet_obj, newx = list_primary$varset$all, type="response", s="lambda.min")]
+
+
+# make pred = selected model, pred will be used later in bootstrapping
+# calculate residuals - (actual - expected)/stdev
+list_primary$data[, pred := get(primary_model)]  # duplicate for convenience
+list_primary$data[past_ind == TRUE, var_pred := (pred^2)*(list_primary$scale)
+             ][past_ind == TRUE, resid := (pmts - pred)/sqrt(var_pred)]
+                  
+
+
+# also calculate reserve values
+list_primary$reserves <- vector(mode="list", length = 4)
+names(list_primary$reserves) <- c("true", "primary", "lambda.1se", "lambda.min")
+
+# true reserve
+list_primary$reserves$true <- list_primary$data[past_ind==FALSE, sum(pmts)]
+# lambda.1se
+list_primary$reserves$lambda.1se <- list_primary$data[past_ind==FALSE, sum(lambda.1se)]
+# lambda.min
+list_primary$reserves$lambda.min <- list_primary$data[past_ind==FALSE, sum(lambda.min)]
+# selected aka primary
+list_primary$reserves$primary <- list_primary$reserves[[primary_model]]
+
+```
+
+
+## Model diagnostics
+
+Now look at some diagnostics for the `r primary_model` using the scale parameter calculated above and the gamma distribution. This model will be the basis for bootstrapping.
+
+When bootstrapping, we drop the first two columns since these are over-fit in all models. Or we might end up sampling the first 2 cols with these residuals and then the reset with the rest of the residuals. TBD
+
+**NB: these are Pearson residual plots, not deviance, so they will have some distortions**
+
+
+
+### Residual plots
+
+
+```{r residual-plots}
+
+p1 <- ggplot(data=list_primary$data[past_ind==TRUE,], aes(x=log(pred), y=resid, colour=dev)) +
+    geom_point(size=2) +
+    scale_colour_viridis(begin=0.9, end=0) +
+    theme(legend.position = "none") +
+    ggtitle("Linear predictor")
+
+
+p2 <- ggplot(data=list_primary$data[past_ind==TRUE,], aes(x=acc, y=resid)) +
+    geom_point(size=2, colour=me_colours$blue) +
+    ggtitle("Accident")
+
+p3 <- ggplot(data=list_primary$data[past_ind==TRUE,], aes(x=dev, y=resid)) +
+    geom_point(size=2, colour=me_colours$blue) +
+    ggtitle("Development")
+
+p4 <- ggplot(data=list_primary$data[past_ind==TRUE,], aes(x=cal, y=resid)) +
+    geom_point(size=2, colour=me_colours$blue) +
+    ggtitle("Calendar")
+
+(p1 + p2) / (p3 + p4)
+
+```
+
+
+### Residual density plot {-}
+
+
+Have a look at the density plot of residuals too
+
+```{r residual-density}
+
+ggplot(data=list_primary$data[past_ind==TRUE]) +
+  geom_density(aes(resid, after_stat(density)), fill=me_colours$blue, colour=me_colours$blue) +
+  stat_function(fun = dnorm, colour=me_colours$orange, linewidth=2) 
+  
+
+```
+
+
+
+### AvsE heatmaps {-}
+
+
+```{r heatmap-plot}
+
+model_forecasts_long <- melt(list_primary$data, 
+                             measure.vars = c("lambda.1se", "lambda.min"), 
+                             id.vars=c("acc", "dev", "cal", "pmts"),
+                             variable.name = "model",
+                             value.name = "fitted")
+
+g <- GraphHeatMap(model_forecasts_long, x="dev", y="acc", facet="model", actual="pmts", fitted="fitted", 
+                  xlab="Development quarter", ylab="Accident quarter")
+g$graph
+
+
+```
+
+
+
+
+
+## Reserve Forecasts
+
+Here are the various forecasts of the loss reserve in Billions 
+
+```{r}
+
+as.data.table(list_primary$reserves)  |>  
+  datatable()  |>  
+  formatRound(names(list_primary$reserves), digits=0)
+
+
+```
+
+
+## Residuals for bootstrap
+
+
+* Use all residuals
+
+
+```{r}
+
+# adjusted residuals
+list_primary$data[past_ind == TRUE & dev >= 1, adj_resid := resid]
+# centre resids
+list_primary$data[past_ind == TRUE & dev >= 1, adj_resid := adj_resid - list_primary$data[, mean(adj_resid, na.rm = TRUE)] ]
+
+# check mean of adj resids
+list_primary$data[!is.na(adj_resid), mean(adj_resid)]
+
+
+```
+
+
+## Prior
+
+### Solve for the priors
+
+```{r, fig.width=10}
+
+
+list_pp <- list(
+  laplace_m_intercept = dt[past_ind==TRUE, log(mean(pmts))],   # prior mean of intercept
+  laplace_s_intercept = 2,     # scale for the intercept - must be large since results not centred so intercept can be long way from data average
+  laplace_m_parameters = 0,    # prior mean for the non-intercept params
+  laplace_s_parameters = 0.425,   
+  prior_name = "finding_priors"
+)
+
+dt_post <- CalculatePosterior(list_primary$data, 
+                         glmnet_obj = list_primary$glmnet_obj, 
+                         varset = list_primary$varset$all,
+                         yvar = "pmts", 
+                         dt_scaling_factor = NULL, 
+                         list_filter = list_dt_filter_params$main, 
+                         list_prior_params = list_pp, 
+                         prior_name = NULL,
+                         scale = list_primary$scale)$probs
+
+
+# plot ----;
+# first get some quantities to put on the plot that we use in search for priors
+mn_1se <- list_primary$glmnet_obj$index[rownames(list_primary$glmnet_obj$index) == "1se"]
+mn_min <- list_primary$glmnet_obj$index[rownames(list_primary$glmnet_obj$index) == "min"]
+mn_max_post <- dt_post[which(dt_post$posterior == max(dt_post$posterior)), model_num]
+max_post <- dt_post[which(dt_post$posterior == max(dt_post$posterior)), posterior]  # used for drawing lines on graph
+sum_prob_ge_1se <- round(dt_post[model_num >= mn_1se, sum(posterior)], 5)
+sum_prob_le_min <- round(dt_post[model_num <= mn_min, sum(posterior)], 5)
+sum_prob_ge_1se_label <- paste("Pr(>= 1se) = ", sum_prob_ge_1se, "\nso", 1-sum_prob_ge_1se, "in shaded area")
+sum_prob_le_min_label <- paste("Pr(<= min) = ", sum_prob_le_min, "\nso", 1-sum_prob_le_min, "in shaded area")
+
+
+ggplot(data = dt_post, mapping = aes(x = model_num, y = posterior)) + 
+  # max post line
+  annotate("segment", x = mn_max_post, xend = mn_max_post, y=0, yend = max_post, colour = me_colours$teal, linewidth=1.5, linetype = 2) +
+  annotate("text", x = mn_max_post, y = 1*max_post/3, label=paste("Max posterior model"), colour = me_colours$teal) +
+  # 1se shaded box
+  annotate("rect", xmin = min(dt_post$model_num), xmax = mn_1se, ymin = 0, ymax = max_post, fill = me_colours$orange, alpha = 0.1)+
+  annotate("text", x = min(dt_post$model_num), y = 5*max_post/6, label=sum_prob_ge_1se_label, colour = me_colours$orange, hjust = 0) +
+  # min shaded box
+  annotate("rect", xmin = mn_min, xmax = max(dt_post$model_num), ymin = 0, ymax = max_post, fill = me_colours$red, alpha = 0.1)+
+  annotate("text", x = max(dt_post$model_num) + 2, y = 5*max_post/6, label=sum_prob_le_min_label, colour = me_colours$red, hjust = 1) +
+  # 1se line
+  annotate("segment", x = mn_1se, xend = mn_1se, y=0, yend = max_post, colour = me_colours$orange) +
+  annotate("text", x = mn_1se, y = 2*max_post/3, label=paste("lambda.1se model"), colour = me_colours$orange) +
+  # min line
+  annotate("segment", x = mn_min, xend = mn_min, y=0, yend = max_post, colour = me_colours$red) +
+  annotate("text", x = mn_min, y = max_post/2, label=paste("lambda.min model"), colour = me_colours$red) +
+  # posterior
+  geom_line(colour = me_colours$blue) +
+  labs(title = paste("Selecting prior - laplace scale is", list_pp$laplace_s_parameters),
+       subtitle = paste("Max post = 1se:", mn_max_post == mn_1se, "\nMax post = min:", mn_max_post == mn_min)) +
+  NULL
+
+
+
+```
+
+
+### Selected priors
+
+```{r}
+
+
+list_primary$prior$list_prior_params <- list(
+  laplace_m_intercept = dt[past_ind==TRUE, log(mean(pmts))],   # prior mean of intercept
+  laplace_s_intercept = 2,     # scale for the intercept - must be large since results not centred so intercept can be long way from data average
+  laplace_m_parameters = 0,    # prior mean for the non-intercept params
+  laplace_s_parameters = c(0.0161, 0.03205, 0.15, 0.425),
+  prior_name = c("simple", "lambda.1se", "midway_1se_min", "lambda.min")
+)
+
+
+
+```
+
+
+## Posterior distributions {.tabset}
+
+
+### Simple {-}
+
+```{r, fig.width=8}
+
+dt_post <- CalculatePosterior(list_primary$data, 
+                         glmnet_obj = list_primary$glmnet_obj, 
+                         varset = list_primary$varset$all,
+                         yvar = "pmts", 
+                         dt_scaling_factor = NULL, 
+                         list_filter = list_dt_filter_params$main, 
+                         list_prior_params = list_primary$prior$list_prior_params, 
+                         prior_name = "simple",
+                         scale = list_primary$scale)$probs
+
+
+# plot ----;
+# first get some quantities to put on the plot that we use in search for priors
+mn_1se <- list_primary$glmnet_obj$index[rownames(list_primary$glmnet_obj$index) == "1se"]
+mn_min <- list_primary$glmnet_obj$index[rownames(list_primary$glmnet_obj$index) == "min"]
+mn_max_post <- dt_post[which(dt_post$posterior == max(dt_post$posterior)), model_num]
+max_post <- dt_post[which(dt_post$posterior == max(dt_post$posterior)), posterior]  # used for drawing lines on graph
+sum_prob_ge_1se <- round(dt_post[model_num >= mn_1se, sum(posterior)], 5)
+sum_prob_le_min <- round(dt_post[model_num <= mn_min, sum(posterior)], 5)
+sum_prob_ge_1se_label <- paste("Pr(>= 1se) = ", sum_prob_ge_1se)
+sum_prob_le_min_label <- paste("Pr(<= min) = ", sum_prob_le_min)
+pval <- list_primary$prior$list_prior_params$laplace_s_parameters[which(list_primary$prior$list_prior_params$prior_name == dt_post[1, prior_name])]
+
+ggplot(data = dt_post, mapping = aes(x = model_num, y = posterior)) + 
+  # max post line
+  # annotate("segment", x = mn_max_post, xend = mn_max_post, y=0, yend = max_post, colour = me_colours$teal, linewidth=1.5, linetype = 2) +
+  # annotate("text", x = mn_max_post, y = 1*max_post/3, label=paste("Max posterior model"), colour = me_colours$teal) +
+  # 1se shaded box
+  annotate("rect", xmin = min(dt_post$model_num), xmax = mn_1se, ymin = 0, ymax = max_post, fill = me_colours$orange, alpha = 0.1)+
+  annotate("text", x = min(dt_post$model_num), y = 5*max_post/6, label=sum_prob_ge_1se_label, colour = me_colours$orange, hjust = 0) +
+  # min shaded box
+  # annotate("rect", xmin = mn_min, xmax = max(dt_post$model_num), ymin = 0, ymax = max_post, fill = me_colours$red, alpha = 0.1)+
+  # annotate("text", x = max(dt_post$model_num) + 2, y = 5*max_post/6, label=sum_prob_le_min_label, colour = me_colours$red, hjust = 1) +
+  # 1se line
+  annotate("segment", x = mn_1se, xend = mn_1se, y=0, yend = max_post, colour = me_colours$orange) +
+  annotate("text", x = mn_1se, y = 2*max_post/3, label=paste("lambda.1se model"), colour = me_colours$orange) +
+  # min line
+  annotate("segment", x = mn_min, xend = mn_min, y=0, yend = max_post, colour = me_colours$red) +
+  annotate("text", x = mn_min, y = max_post/2, label=paste("lambda.min model"), colour = me_colours$red) +
+  # posterior
+  geom_line(colour = me_colours$blue) +
+  labs(title = paste(dt_post[1, prior_name], "prior - laplace scale is", pval))+
+  NULL
+
+
+```
+
+
+### 1se {-}
+
+```{r, fig.width=8}
+
+dt_post <- CalculatePosterior(list_primary$data, 
+                         glmnet_obj = list_primary$glmnet_obj, 
+                         varset = list_primary$varset$all,
+                         yvar = "pmts", 
+                         dt_scaling_factor = NULL, 
+                         list_filter = list_dt_filter_params$main, 
+                         list_prior_params = list_primary$prior$list_prior_params, 
+                         prior_name = "lambda.1se",
+                         scale = list_primary$scale)$probs
+
+
+# plot ----;
+# first get some quantities to put on the plot that we use in search for priors
+mn_1se <- list_primary$glmnet_obj$index[rownames(list_primary$glmnet_obj$index) == "1se"]
+mn_min <- list_primary$glmnet_obj$index[rownames(list_primary$glmnet_obj$index) == "min"]
+mn_max_post <- dt_post[which(dt_post$posterior == max(dt_post$posterior)), model_num]
+max_post <- dt_post[which(dt_post$posterior == max(dt_post$posterior)), posterior]  # used for drawing lines on graph
+sum_prob_ge_1se <- round(dt_post[model_num >= mn_1se, sum(posterior)], 5)
+sum_prob_le_min <- round(dt_post[model_num <= mn_min, sum(posterior)], 5)
+sum_prob_ge_1se_label <- paste("Pr(>= 1se) = ", sum_prob_ge_1se)
+sum_prob_le_min_label <- paste("Pr(<= min) = ", sum_prob_le_min)
+pval <- list_primary$prior$list_prior_params$laplace_s_parameters[which(list_primary$prior$list_prior_params$prior_name == dt_post[1, prior_name])]
+
+ggplot(data = dt_post, mapping = aes(x = model_num, y = posterior)) + 
+  # max post line
+  annotate("segment", x = mn_max_post, xend = mn_max_post, y=0, yend = max_post, colour = me_colours$teal, linewidth=1.5, linetype = 2) +
+  annotate("text", x = mn_max_post, y = 1*max_post/3, label=paste("Max posterior model"), colour = me_colours$teal) +
+  # 1se shaded box
+  # annotate("rect", xmin = min(dt_post$model_num), xmax = mn_1se, ymin = 0, ymax = max_post, fill = me_colours$orange, alpha = 0.1)+
+  # annotate("text", x = min(dt_post$model_num), y = 5*max_post/6, label=sum_prob_ge_1se_label, colour = me_colours$orange, hjust = 0) +
+  # min shaded box
+  # annotate("rect", xmin = mn_min, xmax = max(dt_post$model_num), ymin = 0, ymax = max_post, fill = me_colours$red, alpha = 0.1)+
+  # annotate("text", x = max(dt_post$model_num) + 2, y = 5*max_post/6, label=sum_prob_le_min_label, colour = me_colours$red, hjust = 1) +
+  # 1se line
+  annotate("segment", x = mn_1se, xend = mn_1se, y=0, yend = max_post, colour = me_colours$orange) +
+  annotate("text", x = mn_1se, y = 2*max_post/3, label=paste("lambda.1se model"), colour = me_colours$orange) +
+  # min line
+  annotate("segment", x = mn_min, xend = mn_min, y=0, yend = max_post, colour = me_colours$red) +
+  annotate("text", x = mn_min, y = max_post/2, label=paste("lambda.min model"), colour = me_colours$red) +
+  # posterior
+  geom_line(colour = me_colours$blue) +
+  labs(title = paste(dt_post[1, prior_name], "prior - laplace scale is", pval))+
+  NULL
+
+
+```
+
+
+
+
+### midway_1se_min {-}
+
+```{r, fig.width=8}
+
+dt_post <- CalculatePosterior(list_primary$data, 
+                         glmnet_obj = list_primary$glmnet_obj, 
+                         varset = list_primary$varset$all,
+                         yvar = "pmts", 
+                         dt_scaling_factor = NULL, 
+                         list_filter = list_dt_filter_params$main, 
+                         list_prior_params = list_primary$prior$list_prior_params, 
+                         prior_name = "midway_1se_min",
+                         scale = list_primary$scale)$probs
+
+
+# plot ----;
+# first get some quantities to put on the plot that we use in search for priors
+mn_1se <- list_primary$glmnet_obj$index[rownames(list_primary$glmnet_obj$index) == "1se"]
+mn_min <- list_primary$glmnet_obj$index[rownames(list_primary$glmnet_obj$index) == "min"]
+mn_max_post <- dt_post[which(dt_post$posterior == max(dt_post$posterior)), model_num]
+max_post <- dt_post[which(dt_post$posterior == max(dt_post$posterior)), posterior]  # used for drawing lines on graph
+sum_prob_ge_1se <- round(dt_post[model_num >= mn_1se, sum(posterior)], 5)
+sum_prob_le_min <- round(dt_post[model_num <= mn_min, sum(posterior)], 5)
+sum_prob_ge_1se_label <- paste("Pr(>= 1se) = ", sum_prob_ge_1se)
+sum_prob_le_min_label <- paste("Pr(<= min) = ", sum_prob_le_min)
+pval <- list_primary$prior$list_prior_params$laplace_s_parameters[which(list_primary$prior$list_prior_params$prior_name == dt_post[1, prior_name])]
+
+ggplot(data = dt_post, mapping = aes(x = model_num, y = posterior)) + 
+  # max post line
+  annotate("segment", x = mn_max_post, xend = mn_max_post, y=0, yend = max_post, colour = me_colours$teal, linewidth=1.5, linetype = 2) +
+  annotate("text", x = mn_max_post, y = 1*max_post/3, label=paste("Max posterior model"), colour = me_colours$teal) +
+  # 1se shaded box
+  # annotate("rect", xmin = min(dt_post$model_num), xmax = mn_1se, ymin = 0, ymax = max_post, fill = me_colours$orange, alpha = 0.1)+
+  # annotate("text", x = min(dt_post$model_num), y = 5*max_post/6, label=sum_prob_ge_1se_label, colour = me_colours$orange, hjust = 0) +
+  # min shaded box
+  # annotate("rect", xmin = mn_min, xmax = max(dt_post$model_num), ymin = 0, ymax = max_post, fill = me_colours$red, alpha = 0.1)+
+  # annotate("text", x = max(dt_post$model_num) + 2, y = 5*max_post/6, label=sum_prob_le_min_label, colour = me_colours$red, hjust = 1) +
+  # 1se line
+  annotate("segment", x = mn_1se, xend = mn_1se, y=0, yend = max_post, colour = me_colours$orange) +
+  annotate("text", x = mn_1se, y = 2*max_post/3, label=paste("lambda.1se model"), colour = me_colours$orange) +
+  # min line
+  annotate("segment", x = mn_min, xend = mn_min, y=0, yend = max_post, colour = me_colours$red) +
+  annotate("text", x = mn_min, y = max_post/2, label=paste("lambda.min model"), colour = me_colours$red) +
+  # posterior
+  geom_line(colour = me_colours$blue) +
+  labs(title = paste(dt_post[1, prior_name], "prior - laplace scale is", pval))+
+  NULL
+
+
+```
+
+### min {-}
+
+```{r, fig.width=8}
+
+dt_post <- CalculatePosterior(list_primary$data, 
+                         glmnet_obj = list_primary$glmnet_obj, 
+                         varset = list_primary$varset$all,
+                         yvar = "pmts", 
+                         dt_scaling_factor = NULL, 
+                         list_filter = list_dt_filter_params$main, 
+                         list_prior_params = list_primary$prior$list_prior_params, 
+                         prior_name = "lambda.min",
+                         scale = list_primary$scale)$probs
+
+
+# plot ----;
+# first get some quantities to put on the plot that we use in search for priors
+mn_1se <- list_primary$glmnet_obj$index[rownames(list_primary$glmnet_obj$index) == "1se"]
+mn_min <- list_primary$glmnet_obj$index[rownames(list_primary$glmnet_obj$index) == "min"]
+mn_max_post <- dt_post[which(dt_post$posterior == max(dt_post$posterior)), model_num]
+max_post <- dt_post[which(dt_post$posterior == max(dt_post$posterior)), posterior]  # used for drawing lines on graph
+sum_prob_ge_1se <- round(dt_post[model_num >= mn_1se, sum(posterior)], 5)
+sum_prob_le_min <- round(dt_post[model_num <= mn_min, sum(posterior)], 5)
+sum_prob_ge_1se_label <- paste("Pr(>= 1se) = ", sum_prob_ge_1se)
+sum_prob_le_min_label <- paste("Pr(<= min) = ", sum_prob_le_min)
+pval <- list_primary$prior$list_prior_params$laplace_s_parameters[which(list_primary$prior$list_prior_params$prior_name == dt_post[1, prior_name])]
+
+ggplot(data = dt_post, mapping = aes(x = model_num, y = posterior)) + 
+  # max post line
+  annotate("segment", x = mn_max_post, xend = mn_max_post, y=0, yend = max_post, colour = me_colours$teal, linewidth=1.5, linetype = 2) +
+  annotate("text", x = mn_max_post, y = 1*max_post/3, label=paste("Max posterior model"), colour = me_colours$teal) +
+  # 1se shaded box
+  # annotate("rect", xmin = min(dt_post$model_num), xmax = mn_1se, ymin = 0, ymax = max_post, fill = me_colours$orange, alpha = 0.1)+
+  # annotate("text", x = min(dt_post$model_num), y = 5*max_post/6, label=sum_prob_ge_1se_label, colour = me_colours$orange, hjust = 0) +
+  # min shaded box
+  # annotate("rect", xmin = mn_min, xmax = max(dt_post$model_num), ymin = 0, ymax = max_post, fill = me_colours$red, alpha = 0.1)+
+  # annotate("text", x = max(dt_post$model_num) + 2, y = 5*max_post/6, label=sum_prob_le_min_label, colour = me_colours$red, hjust = 1) +
+  # 1se line
+  annotate("segment", x = mn_1se, xend = mn_1se, y=0, yend = max_post, colour = me_colours$orange) +
+  annotate("text", x = mn_1se, y = 2*max_post/3, label=paste("lambda.1se model"), colour = me_colours$orange) +
+  # min line
+  annotate("segment", x = mn_min, xend = mn_min, y=0, yend = max_post, colour = me_colours$red) +
+  annotate("text", x = mn_min, y = max_post/2, label=paste("lambda.min model"), colour = me_colours$red) +
+  # posterior
+  geom_line(colour = me_colours$blue) +
+  labs(title = paste(dt_post[1, prior_name], "prior - laplace scale is", pval))+
+  NULL
+
+
+```
+
+## Bayesian averaging of primary model path
+
+We get a first initial estimate of model error by applying Bayesian averaging to the lasso model path from the initial model.
+We do this for each of the priors.
+
+### Calculations
+
+- keep fitted values from one iteration only, same across all priors
+
+```{r}
+list_fitted <- list_probs <- vector(mode = "list", length = length(list_primary$prior$list_prior_params$prior_name))
+
+for(v in list_primary$prior$list_prior_params$prior_name){
+  tem <- CalculatePosterior(list_primary$data, 
+                            glmnet_obj = list_primary$glmnet_obj, 
+                            varset = list_primary$varset$all,
+                            yvar = "pmts", 
+                            dt_scaling_factor = NULL, 
+                            list_filter = list_dt_filter_params$main, 
+                            list_prior_params = list_primary$prior$list_prior_params, 
+                            prior_name = v,
+                            scale = list_primary$scale,
+                            return_fitted = TRUE)
+  list_probs[[v]] <- copy(tem$probs)
+  list_fitted [[v]] <- copy(tem$fitted)
+  
+}
+
+list_primary$dt_probs <- rbindlist(list_probs)
+
+dt_fitted <- rbindlist(list_fitted)  # needed for scaling later on
+
+# factor prior_name to preserve ordering
+list_primary$dt_probs[, prior_name := factor(prior_name, levels =list_primary$prior$list_prior_params$prior_name)]
+dt_fitted[, prior_name := factor(prior_name, levels =list_primary$prior$list_prior_params$prior_name)]
+```
+
+- Bayesian averaging
+- full posterior average cashflows
+
+
+```{r}
+# run the Bayesian averaging
+list_primary$dt_results <- SummariseBayesianAveraging(list_primary$dt_probs)
+
+
+```
+
+
+## Primary posterior forecasts
+
+* Finally set up the four list_primary posterior forecasts for each prior for use in the filtering step.
+* Use the mean of the distribution
+
+### Posterior cashflows
+
+```{r}
+
+list_primary$dt_posterior_forecasts <- GetPosteriorForecasts(dt_fitted, list_primary$dt_probs)
+
+```
+
+
+
+## Results
+
+```{r}
+# display table of results
+list_primary$dt_results |> 
+  datatable() |> 
+  formatRound(c("post_mean", "post_sd", "post_mean_pe", "post_sd_pe"), digits=0) |> 
+  formatPercentage(c("post_cov", "post_cov_pe"), digits=2)
+
+```
+
+
+From GLMs we estimated about 370k
+
+The process error results are included here, but are likely to be unrepresentative since we really should simulate them many times over each of the models.
+
+
+
+# Bootstrap
+
+```{r}
+#bs_names <- c("glmnet", "unscaled_probs", "unscaled_results", "dt_scaling", "probs")
+
+# list_bs <- vector(mode = "list", length = length(bs_names))
+# names(list_bs) <- bs_names
+
+list_bs <- list()
+
+```
+
+
+## First bootstrap
+
+- use lambda.1se model and residuals
+- apply initial scaling
+- intensive part of this process is fitting all the lasso models
+  - few gains from parallelisation - 2 or 3 workers is probably as good as you can do
+
+```{r}
+
+dfmax_default <- ncol(list_primary$varset$past) + 1  # default setting of nvars+1
+pmax_default <- min(dfmax_default*2 + 20, ncol(list_primary$varset$past))
+
+#start_time <- Sys.time()
+x <- ParallelBootstrap(dt = list_primary$data,
+                       nboot = 100,
+                       scale = list_primary$scale,
+                       resid_name = "adj_resid",
+                       var_pred_name = "var_pred",
+                       min_val = 10,
+                       vec_lambda = lambdavec,
+                       list_varset = list_primary$varset,
+                       yvar = "pmts",
+                       dfmax = dfmax_default,
+                       pmax = pmax_default,
+                       thresh = 1e-7,
+                       list_prior_params = list_primary$prior$list_prior_params,
+                       dt_scaling_factor = NULL,
+                       list_filter = list_dt_filter_params$initial,
+                       parallel = TRUE,
+                       nworkers = 3,
+                       batchsize = 35
+)
+
+#Sys.time()- start_time 
+
+# 5x20 = 12.5 mins
+# 10x10 = 12.6 mins
+
+list_bs$list_glmnet <- x$list_glmnet
+list_bs$dt_unscaled_probs <- x$dt_probs
+list_bs$dt_bs_data <- x$dt_bs_data
+
+list_bs$dt_unscaled_results <- CalculateModelError(list_bs$dt_unscaled_probs, min_model_number = 5, min_model_prob_threshold = 1e-4)$results
+
+rm(x)
+gc()
+
+```
+
+
+
+## Scaling factors
+
+- so that means match original posterior scaling
+
+```{r}
+
+# combine bootstrap means and primary posterior means and get scaling
+list_bs$dt_scaling <- list_bs$dt_unscaled_results[ list_primary$dt_results[, .(prior_name, post_mean)], 
+                                          on=.(prior_name), 
+                                          primary_post_mean := i.post_mean][, .(prior_name, primary_post_mean, bs_means_mean)]
+
+list_bs$dt_scaling[, scaling_factor := primary_post_mean / bs_means_mean]
+
+# print out the scaling factors
+list_bs$dt_scaling |> 
+  datatable() |> 
+  formatRound(columns = c("bs_means_mean", "primary_post_mean"), digits=0, mark=",") |> 
+  formatPercentage(columns = c("scaling_factor", "scaling_factor"), digits=2) 
+
+```
+
+## Rescale the bootstraps
+
+
+```{r}
+start_time <- Sys.time()
+
+x <- ParallelBootstrap(dt = list_bs$dt_bs_data,
+                       nboot = 100,
+                       scale = list_primary$scale,
+                       resid_name = "adj_resid",
+                       var_pred_name = "var_pred",
+                       min_val = 10,
+                       vec_lambda = lambdavec,
+                       list_varset = list_primary$varset,
+                       yvar = "pmts",
+                       dfmax = dfmax_default,
+                       pmax = pmax_default,
+                       thresh = 1e-7,
+                       list_prior_params = list_primary$prior$list_prior_params,
+                       dt_scaling_factor = list_bs$dt_scaling,
+                       list_filter = list_dt_filter_params$main,
+                       parallel = TRUE,
+                       nworkers = 7,
+                       batchsize = 30,
+                       list_glmnet = list_bs$list_glmnet )
+
+
+Sys.time()- start_time 
+
+list_bs$dt_probs <- x$dt_probs
+
+tem <- CalculateModelError(list_bs$dt_probs, min_model_number = 5, min_model_prob_threshold = 1e-4)
+list_bs$dt_results <- tem$results
+list_bs$dt_retained_bs <- tem$retained_bs
+
+rm(x, tem)
+gc()
+
+
+
+```
+
+
+
+## Results {.tabset}
+
+```{r}
+# used to format tables
+
+percent_cols <- c("bs_covs_mean", "bs_variances_cov", "bs_means_cov", 
+                  "cov_model_param_process_error", "cov_model_error", "cov_param_error", "cov_process_error")
+percent_cols <- c(percent_cols, paste0(percent_cols, "_pe"))
+
+```
+
+
+### Grand results {-}
+
+```{r}
+
+grand_results_cols <- c("cov_model_param_process_error", "cov_model_error", "cov_param_error", "cov_process_error",
+                        "bs_means_mean", "num_bs",
+                        "sd_model_param_process_error", "sd_model_error", "sd_param_error", "sd_process_error")
+
+
+
+kv <- c("prior_name", grand_results_cols)
+kvpc <- intersect(kv, percent_cols)
+
+list_bs$dt_results[, ..kv] |> 
+  datatable() |> 
+  formatRound(columns = setdiff(kv, c("prior_name", kvpc)), digits=0, mark=",") |> 
+  formatPercentage(columns = kvpc, digits=2) 
+
+```
+
+### Underlying table{-}
+
+Grand results taken calculated from this
+
+
+```{r}
+kv <- setdiff(names(list_bs$dt_results), grand_results_cols)
+kvpc <- intersect(kv, percent_cols)
+
+list_bs$dt_results[, ..kv] |> 
+  datatable() |> 
+  formatRound(columns = setdiff(kv, c("prior_name", kvpc)), digits=0, mark=",") |> 
+  formatPercentage(columns = kvpc, digits=2) 
+
+```
+
+### Individual bootstrap results {-}
+
+```{r}
+# calculate posterior means, variances
+
+list_bs$dt_idv_results <- list_bs$dt_probs[,`:=`(bs_post_mean = sum(reserve * posterior), bs_post_mean_pe = sum(reserve_pe * posterior)), 
+                                             by=.(boot, prior_name)
+                                          ][, .(bs_post_mean = mean(bs_post_mean),
+                               bs_post_mean_pe = mean(bs_post_mean_pe),
+                               bs_post_var = sum( ((reserve - bs_post_mean)^2) * posterior),
+                               bs_post_var_pe = sum( ((reserve_pe - bs_post_mean_pe)^2) * posterior)    ), 
+                           keyby = .(boot, prior_name)]
+
+
+# add sd and cov now
+list_bs$dt_idv_results[, `:=`(bs_post_sd = sqrt(bs_post_var), 
+                           bs_post_sd_pe = sqrt(bs_post_var_pe),
+                           bs_post_cov = sqrt(bs_post_var) / bs_post_mean, 
+                           bs_post_cov_pe = sqrt(bs_post_var_pe) / bs_post_mean_pe)]
+
+
+datatable(list_bs$dt_idv_results, options = list(pageLength = 12, lengthMenu=c(12, 20, 40, 100))) |> 
+  formatRound(columns = setdiff(names(list_bs$dt_idv_results), c("boot", "prior_name", "bs_post_cov", "bs_post_cov_pe")), digits=0, mark=",") |> 
+  formatPercentage(columns = c("bs_post_cov", "bs_post_cov_pe"), digits=2) 
+
+```
+
+
+### CDFs of scaled bootstraps - no process error {-}
+
+```{r, fig.width = 10}
+
+# probs_retained_bs calculated above
+
+# combine the original and bootstrapped priors now
+cdfs <- rbind( list_primary$dt_probs[, .(model_num, prior_name, posterior, reserve)][, boot := 0],
+               list_bs$dt_probs[, .(boot, model_num, prior_name, posterior, reserve)]  )
+
+setorder(cdfs, boot, prior_name, reserve)
+cdfs[, cdf := cumsum(posterior), keyby=.(boot, prior_name)]
+
+# plot
+ggplot(data=cdfs, aes(x=reserve, y=cdf, colour = factor(boot), alpha = factor(boot), linewidth = factor(boot)))+
+  geom_line()+
+  facet_wrap(~prior_name)+
+  scale_colour_manual(values=c(me_colours$red, rep(me_colours$grey, max(cdfs$boot))))+
+  scale_alpha_manual(values=c(1, rep(0.25, max(cdfs$boot))))+
+  scale_linewidth_manual(values=c(2, rep(0.5, max(cdfs$boot))))+
+  scale_x_continuous(labels = label_number(scale_cut = cut_short_scale()))+
+  theme(legend.position="none")+
+  NULL
+
+```
+
+
+### CDFs of scaled bootstraps - with process error {-}
+
+```{r, fig.width = 10}
+
+# probs_retained_bs calculated above
+
+# combine the original and bootstrapped priors now
+cdfs <- rbind( list_primary$dt_probs[, .(model_num, prior_name, posterior, reserve)][, boot := 0],
+               list_bs$dt_probs[, .(boot, model_num, prior_name, posterior, reserve_pe)][, reserve := reserve_pe][, reserve_pe := NULL]  )
+
+setorder(cdfs, boot, prior_name, reserve)
+cdfs[, cdf := cumsum(posterior), keyby=.(boot, prior_name)]
+
+# plot
+ggplot(data=cdfs, aes(x=reserve, y=cdf, colour = factor(boot), alpha = factor(boot), linewidth = factor(boot)))+
+  geom_line()+
+  facet_wrap(~prior_name)+
+  scale_colour_manual(values=c(me_colours$red, rep(me_colours$grey, max(cdfs$boot))))+
+  scale_alpha_manual(values=c(1, rep(0.25, max(cdfs$boot))))+
+  scale_linewidth_manual(values=c(2, rep(0.5, max(cdfs$boot))))+
+  scale_x_continuous(labels = label_number(scale_cut = cut_short_scale()))+
+  theme(legend.position="none")+
+  NULL
+
+```
+
+
+### Reserve results and original Bayesian averaging {-}
+
+True (ie from simulated data) reserve is `r list_primary$reserves$true`
+
+
+```{r}
+
+list_primary$dt_results |> 
+  datatable() |> 
+  formatRound(columns = c("post_mean", "post_sd", "post_mean_pe", "post_sd_pe"), digits=0, mark=",") |> 
+  formatPercentage(columns = c("post_cov", "post_cov_pe"), digits=2) 
+
+```
+
+
+
+
+# Appendix - Gamma scale parameter
+
+This is what `rgamma()` assumes:
+
+
+The Gamma distribution with parameters shape$=\alpha$ and scale=$\sigma$ has density
+
+$$
+f(x) = \frac{1}{\sigma^\alpha} x^{\alpha - 1} e^{-x/\sigma}
+$$
+
+with mean and variance
+
+$$
+E(X) = \alpha \sigma \\
+
+Var(X)= \alpha \sigma^2
+
+$$
+
+
+From my [goto GLM summary doc on SAS](https://documentation.sas.com/doc/en/pgmsascdc/9.4_3.4/statug/statug_genmod_details01.htm), $\alpha = v$ there and the GLM scale parameter is scale = $v^{-1} = \alpha^{-1}$.
+
+Given that $\alpha = \text{scale}^{-1}$, then since $E(X) = \alpha \sigma$, $\sigma = E(X)/\alpha$.
+
+
+
