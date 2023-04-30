@@ -1,7 +1,7 @@
 # Options specified here will apply to all posts in this folder
 
 # freeze computational output - set to true to preserve package info with renv
-freeze: true
+freeze: false
 
 # Enable banner style title blocks
 title-block-banner: true
@@ -12,3 +12,5 @@ toc-depth: 3
 
 page-layout: article
 
+# add a license
+license: "CC BY-SA"

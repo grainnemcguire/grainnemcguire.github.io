@@ -2,10 +2,9 @@
 title: "Model error via regularised regression - CAS monograph data"
 author: "Grainne McGuire"
 date: '2023-05-04'
-draft: true
 description: "Estimate model error and other error via a Lasso bootstrap"
 categories: ["Machine Learning", "R", "Lasso", "Model Error", "Bootstrap"]
-image: "prior.png"
+#image: "reserves.png"
 resources: 
   - "_functions.R"
   - "_meyersshi.csv"
@@ -42,12 +41,9 @@ First I set up my R environment:
 
 - Packages used (see bottom of this article for package versions). One thing I recommend is to check you have a recent version of [glmnet](https://CRAN.R-project.org/package=glmnet) (4.1-4 or later) since the package was changed to use C++ at that point leading to spped-ups in runtimes.
 - colours and [ggplot2](https://CRAN.R-project.org/package=ggplot2) theme settings
-- Functions used to run the code - the main parts of the code are sitting in the file [_functions.R](./_functions.R). **Please note that these functions don't contain much error catching so use them carefully and at your own risk**. If you run into problems you may need to use R debugging tools to work out your error.
+- Functions used to run the code - the main parts of the code are sitting in the file [_functions.R](./_functions.R). **Please note that these functions don't contain much error catching so use them carefully**. If you run into problems you may need to use R debugging tools to work out your error.
 
 ```{r}
-#| collapse: true
-#| echo: false
-
 library(here)
 library(data.table)
 library(glmnet)
@@ -88,7 +84,6 @@ source(here("post", "2023-05-04-model-error-example", "_functions.R"))
 check for conflicts and resolve if needed (one conflict found).
 
 ```{r}
-#| collapse: true
 
 conflict_scout()
 conflict_prefer("viridis_pal", "viridis")
@@ -132,7 +127,6 @@ use_parallel <- FALSE
 
 ## Data
 
-- The data is located [here](./_meyersshi.csv)
 - I've loaded in the data below using `data.table::fread()`. The file path is set using the [here package]( https://CRAN.R-project.org/package=here).
   - I use `data.table` for all my data manipulations - I'll aim to describe what each code chunk is doing so even if you're unfamiliar with `data.table` syntax, you'll be able to follow along.
   - I also use the [DT](https://CRAN.R-project.org/package=DT) to print out nicely formatted tables using the function `DT::datatable()` - this is not related to the `data.table` package.
@@ -251,7 +245,7 @@ list_primary$predictor_obj$scaling <- c(GetScaling(dt[past_ind==TRUE, acc]),
 #### Basis functions {-}
 
 - We produce a matrix of all the basis functions. For convenience, this is separated into past and future components as well.
-- The parameter `int_effects_list` is used to specify what interactions to create - in this case all $I(\text{acc} \ge i) . I(\text(dev) \ge j)$ heaviside interactions.
+- The parameter `int_effects_list` is used to specify what interactions to create - in this case all $I(\text{acc} \ge i) . I(\text(dev) ge i)$ heaviside interactions.
 
 ```{r}
 
@@ -272,7 +266,7 @@ list_primary$varset$future <- list_primary$varset$all[!dt[, past_ind], ]
 
 
 # look at start of matrix to see what it looks like
-list_primary$varset$all[41:46, 1:10]
+list_primary$varset$all[41:56, 1:10]
 
 ```
 
@@ -417,7 +411,19 @@ list_primary$data[, lambda.min := predict(list_primary$glmnet_obj, newx = list_p
 # calculate residuals - (actual - expected)/stdev
 list_primary$data[, pred := get(main_model)]  # duplicate for convenience
 list_primary$data[past_ind == TRUE, var_pred := (pred^2)*(list_primary$scale)
-                  ][past_ind == TRUE, resid := (pmts - pred)/sqrt(var_pred)]
+             ][past_ind == TRUE, resid := (pmts - pred)/sqrt(var_pred)]
+
+
+
+# # adjusted residuals
+# list_primary$data[past_ind == TRUE & dev >= 1, adj_resid := resid]
+# # centre resids
+# list_primary$data[past_ind == TRUE & dev >= 1, adj_resid := adj_resid - list_primary$data[, mean(adj_resid, na.rm = TRUE)] ]
+# 
+# # check mean of adj resids
+# list_primary$data[!is.na(adj_resid), mean(adj_resid)]
+
+                  
 
 
 # also calculate reserve values
@@ -519,6 +525,7 @@ g$graph
 
 - In our paper we discuss different possibilities for priors, so refer to that discussion there
 - Because the Lasso is fitted using a poisson, but our analysis assumes a gamma distribution, we need to solve for the priors that produce the desired properties, rather than use the glmnet lambda values directly
+- The graph below won't win any data visualisation contests, but captures the various bits and pieces of information I've used to interactively find the priors (it's a manual process, I did not set up automation for it).
 - The process is as follows:
   - We specify the priors for the model parameters assuming a laplace distribution
     - A fairly wide prior for the intercept term centred on the log(average past payments)
@@ -538,11 +545,6 @@ I have retained the same inclusion gates for this data as for the simulated data
 
 #### Code for searching for the priors
 
-Using a bit of trial and error and the code below, I came up with prior values for the four different types of prior considered in our paper.
-
-The graph below won't win any data visualisation contests, but captures the various bits and pieces of information I've used to interactively find the priors.
-
-
 ```{r}
 #| fig-width: 10
 
@@ -550,7 +552,7 @@ list_pp <- list(
   laplace_m_intercept = dt[past_ind==TRUE, log(mean(pmts))],   # prior mean of intercept
   laplace_s_intercept = 2,     # scale for the intercept - must be large since results not centred so intercept can be long way from data average
   laplace_m_parameters = 0,    # prior mean for the non-intercept params
-  laplace_s_parameters = 0.029,   
+  laplace_s_parameters = 0.01505,   
   prior_name = "finding_priors"
 )
 

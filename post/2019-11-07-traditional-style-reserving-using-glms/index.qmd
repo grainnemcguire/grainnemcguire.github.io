@@ -27,8 +27,8 @@ This post provides a worked example in R of fitting a GLM to some non-life claim
 The example and data are drawn from the CAS Monograph [Stochastic Loss Reserving using Generalized Linear Models](/publication/2016_monograph).
 Here we follow through the application of the cross-classified model from that monograph to the data (Chapter 3), and follow through with the additional work to firstly simplify the model and secondly to improve the model fit through the use of some interaction terms (Chapter 7).
 
-- The data used in this article is available [here](_glms_meyersshi.csv)
-- You can download this notebook as a quarto file to run the code yourself from [here](_traditional_style_reserving_glms.qmd)
+- The data used in this article is available [here](./_glms_meyersshi.csv)
+- You can download this notebook as a quarto file to run the code yourself from [here](./_traditional_style_reserving_glms.qmd)
 
 
 ## Setup
