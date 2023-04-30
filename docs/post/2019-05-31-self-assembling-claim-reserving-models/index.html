@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.330">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Grainne McGuire">
+<meta name="dcterms.date" content="2019-05-31">
+<meta name="description" content="This article works through the application of the LAsso model to a reserving problem as discussed in McGuire et al (2021)">
+
+<title>Code snippets - Self-assembling claim reserving models</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<script src="../../site_libs/quarto-html/quarto.js"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit"
+  }
+}</script>
+
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<link rel="stylesheet" href="../../styles.css">
+</head>
+
+<body class="nav-fixed">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">Code snippets</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../index.html" rel="" target="">
+ <span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html" rel="" target="">
+ <span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../post.html" rel="" target="">
+ <span class="menu-text">Posts</span></a>
+  </li>  
+</ul>
+            <div class="quarto-navbar-tools ms-auto">
+</div>
+          </div> <!-- /navcollapse -->
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">Self-assembling claim reserving models</h1>
+                  <div>
+        <div class="description">
+          This article works through the application of the LAsso model to a reserving problem as discussed in McGuire et al (2021)
+        </div>
+      </div>
+                          <div class="quarto-categories">
+                <div class="quarto-category">Machine Learning</div>
+                <div class="quarto-category">R</div>
+                <div class="quarto-category">Lasso</div>
+              </div>
+                  </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Grainne McGuire </p>
+            </div>
+    </div>
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">May 31, 2019</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#april-2023-update" id="toc-april-2023-update" class="nav-link active" data-scroll-target="#april-2023-update">April 2023 update</a></li>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link" data-scroll-target="#introduction">Introduction</a></li>
+  <li><a href="#r-code" id="toc-r-code" class="nav-link" data-scroll-target="#r-code">R code</a>
+  <ul class="collapse">
+  <li><a href="#setup" id="toc-setup" class="nav-link" data-scroll-target="#setup">Setup</a></li>
+  <li><a href="#generating-the-synthetic-data-set" id="toc-generating-the-synthetic-data-set" class="nav-link" data-scroll-target="#generating-the-synthetic-data-set">Generating the synthetic data set</a></li>
+  <li><a href="#specifying-the-lasso-model" id="toc-specifying-the-lasso-model" class="nav-link" data-scroll-target="#specifying-the-lasso-model">Specifying the LASSO model</a></li>
+  <li><a href="#fitting-the-lasso-model" id="toc-fitting-the-lasso-model" class="nav-link" data-scroll-target="#fitting-the-lasso-model">Fitting the LASSO model</a></li>
+  </ul></li>
+  <li><a href="#analysing-the-model" id="toc-analysing-the-model" class="nav-link" data-scroll-target="#analysing-the-model">Analysing the model</a></li>
+  <li><a href="#claims-reserves" id="toc-claims-reserves" class="nav-link" data-scroll-target="#claims-reserves">Claims reserves</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
+  <li><a href="#session-information" id="toc-session-information" class="nav-link" data-scroll-target="#session-information">Session information</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+<section id="april-2023-update" class="level2">
+<h2 class="anchored" data-anchor-id="april-2023-update">April 2023 update</h2>
+<p>The article below is my original article working through a tutorial example of the R code from our Variance paper <a href="https://variancejournal.org/article/28366-self-assembling-insurance-claim-models-using-regularized-regression-and-machine-learning">Self-Assembling Insurance Claim Models Using Regularized Regression and Machine Learning</a>.</p>
+<p>Since then some or all of the article has been published in other forms with slight variations to the code and content:</p>
+<ul>
+<li>Present article - uses base R</li>
+<li><a href="https://institute-and-faculty-of-actuaries.github.io/mlr-blog/post/foundations/lasso/">MLRWP blog</a> - some introductory material, code makes use of the <code>data.table</code> package with some nicer graphical output as well</li>
+<li><a href="https://institute-and-faculty-of-actuaries.github.io/mlr-blog/post/foundations/mlr3example/">ML modelling on triangles</a> - another MLRWP article where the Lasso was one of a number of methods used. In this article I implemented it using the <code>mlr3</code> ecosystem</li>
+<li><a href="https://institute-and-faculty-of-actuaries.github.io/mlr-blog/post/foundations/scikitexample/">A python approach</a> this article is based off the one above, but this time using python, so contains a discussion of how to implement this Lasso approach in that language</li>
+</ul>
+</section>
+<section id="introduction" class="level2">
+<h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
+<p>Recently, Greg Taylor, Hugh Miller and myself completed some work to develop an approach for fitting a claims reserving model using regularised regression, the LASSO in particular. This was published in the <a href="https://variancejournal.org/article/28366-self-assembling-insurance-claim-models-using-regularized-regression-and-machine-learning">Variance Journal in 2021</a>.</p>
+<p>The motivation behind this work is to develop an automatic method to construct a general insurance claims reserving model for data sets with complex features where simple approaches such as the chain ladder fail. In the past we have advocated the use of GLM models for such data sets, but the construction of a GLM is a time-consuming process, even for a skilled analyst. Our aim was to develop a procedure that produced a model similar to a GLM, but using machine learning techniques. This approach has performed well - as may be seen from the charts towards the end of this example, which show that the fitted curves can track the underlying specification quite well, even in the presence of significant noise, or difficult to detect interactions.</p>
+<p>The paper fills in the details around the approach, so they will not be repeated here. Instead, this will focus on illustrating the use of the LASSO in claims reserving by fitting the model to one of the synthetic data examples discussed in the paper. I will be working through a fully worked example with all R code available. To reduce dependencies on external libraries, I have carried out the work in base R as much as possible.</p>
+<p>In our paper we investigate the use of the LASSO using four synthetic (i.e.&nbsp;simulated) data sets as well as a real data set. This worked example will use the third simulated data set. The specifications for this data set are given in Section 4.2.1 of the paper. The main points to note are that this data set :</p>
+<ul>
+<li>is a 40x40 triangle, with</li>
+<li>accident and development period effects</li>
+<li>calendar period effects (i.e.&nbsp;superimposed inflation)</li>
+<li>an step-interaction between accident and development period for accident periods greater than 17 and development periods greater than 20 (note this affects only 10 cells of the triangle)</li>
+</ul>
+<p>You can download a quarto file of this notebook <a href="_self_assembling_claims_models.qmd">here</a> if you want to try to run the code yourself.</p>
+</section>
+<section id="r-code" class="level2">
+<h2 class="anchored" data-anchor-id="r-code">R code</h2>
+<section id="setup" class="level3">
+<h3 class="anchored" data-anchor-id="setup">Setup</h3>
+<p>First we must open R and load any libraries required. As noted above, I will use base R as much as possible so there are only two additional libraries required:</p>
+<ul>
+<li><code>glmnet</code> - this is the library we used to implement the LASSO model. References are in our paper.</li>
+<li><code>ggplot2</code> - for producing graphs.</li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(glmnet)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="do">## Loading required package: Matrix</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="do">## Loaded glmnet 4.1-7</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">options</span>(<span class="st">"scipen"</span><span class="ot">=</span><span class="dv">99</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="generating-the-synthetic-data-set" class="level3">
+<h3 class="anchored" data-anchor-id="generating-the-synthetic-data-set">Generating the synthetic data set</h3>
+<p>First we need a data set. The code below, using a seed of 130 produces the data set used in the paper.</p>
+<p>Before we generate the data, we need to create a small utility function which will be widely used - it takes a vector <em>var</em> and produces a spline piece between <code>start</code> and <code>stop</code> - flat (and 0) up to <code>start</code>, thereafter increasing to <code>stop</code> and then levelling out at this point. This is used both in the data generation and in the generation of basis functions for the LASSO.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>LinearSpline <span class="ot">&lt;-</span> <span class="cf">function</span>(var, start, stop){</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">pmin</span>(stop <span class="sc">-</span> start, <span class="fu">pmax</span>(<span class="dv">0</span>, var <span class="sc">-</span> start))</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The code below generates the data set as specified in our paper. If you want to use our data set, use a seed of 130. Otherwise, use different seeds to produce different data sets.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># initialise the seed for reproducibilty</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">130</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>numperiods <span class="ot">&lt;-</span> <span class="dv">40</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co">#periods</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>kk <span class="ot">&lt;-</span> <span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span>numperiods, <span class="at">each =</span> numperiods) <span class="co">#AQ</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>jj <span class="ot">&lt;-</span> <span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span>numperiods, <span class="at">times=</span> numperiods) <span class="co">#DQ</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>tt <span class="ot">&lt;-</span> kk<span class="sc">+</span>jj<span class="dv">-1</span> <span class="co"># PQ</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="co"># make a function of the SI effect to make it easier to read </span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>gammafunc <span class="ot">&lt;-</span> <span class="cf">function</span>(t){</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    gg <span class="ot">&lt;-</span> </span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>        <span class="fu">ifelse</span>( t<span class="sc">&lt;=</span><span class="dv">12</span>, gg <span class="ot">&lt;-</span> <span class="fl">0.0075</span><span class="sc">*</span><span class="fu">LinearSpline</span>(t,<span class="dv">1</span>,<span class="dv">12</span>),</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>                <span class="fu">ifelse</span>(t<span class="sc">&lt;=</span><span class="dv">24</span>,  gg <span class="ot">&lt;-</span> <span class="fl">0.0075</span><span class="sc">*</span><span class="fu">LinearSpline</span>(<span class="dv">12</span>,<span class="dv">1</span>,<span class="dv">12</span>) <span class="sc">+</span> <span class="fl">0.001</span><span class="sc">*</span> (t<span class="dv">-12</span>)<span class="sc">*</span>(t<span class="dv">-11</span>)<span class="sc">/</span><span class="dv">2</span>,</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>                       <span class="fu">ifelse</span>(t<span class="sc">&lt;=</span><span class="dv">32</span>, gg <span class="ot">&lt;-</span> <span class="fl">0.0075</span><span class="sc">*</span><span class="fu">LinearSpline</span>(<span class="dv">12</span>,<span class="dv">1</span>,<span class="dv">12</span>) <span class="sc">+</span> <span class="fl">0.001</span><span class="sc">*</span> (<span class="dv">24-12</span>)<span class="sc">*</span>(<span class="dv">24-11</span>)<span class="sc">/</span><span class="dv">2</span>,</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>                           <span class="fu">ifelse</span>(t<span class="sc">&lt;=</span><span class="dv">40</span>, gg <span class="ot">&lt;-</span> <span class="fl">0.0075</span><span class="sc">*</span><span class="fu">LinearSpline</span>(<span class="dv">12</span>,<span class="dv">1</span>,<span class="dv">12</span>) <span class="sc">+</span> <span class="fl">0.001</span><span class="sc">*</span> (<span class="dv">24-12</span>)<span class="sc">*</span>(<span class="dv">24-11</span>)<span class="sc">/</span><span class="dv">2</span> <span class="sc">+</span> <span class="fl">0.002</span><span class="sc">*</span>(t<span class="dv">-32</span>)<span class="sc">*</span>(t<span class="dv">-31</span>)<span class="sc">/</span><span class="dv">2</span>,</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>                               <span class="fl">0.0075</span><span class="sc">*</span><span class="fu">LinearSpline</span>(<span class="dv">12</span>,<span class="dv">1</span>,<span class="dv">12</span>) <span class="sc">+</span> <span class="fl">0.001</span><span class="sc">*</span> (<span class="dv">24-12</span>)<span class="sc">*</span>(<span class="dv">24-11</span>)<span class="sc">/</span><span class="dv">2</span> <span class="sc">+</span> <span class="fl">0.002</span><span class="sc">*</span>(<span class="dv">40-32</span>)<span class="sc">*</span>(<span class="dv">40-31</span>)<span class="sc">/</span><span class="dv">2</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>                           ))))</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>    <span class="dv">1</span><span class="sc">*</span>gg  <span class="co">#can scale up shape here if desired</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>alpha <span class="ot">&lt;-</span> <span class="fu">log</span>(<span class="dv">100000</span>)<span class="sc">+</span><span class="fl">0.1</span><span class="sc">*</span><span class="fu">LinearSpline</span>(kk,<span class="dv">1</span>,<span class="dv">15</span>)<span class="sc">+</span><span class="fl">0.2</span><span class="sc">*</span><span class="fu">LinearSpline</span>(kk,<span class="dv">15</span>,<span class="dv">20</span>) <span class="sc">-</span> <span class="fl">0.05</span><span class="sc">*</span><span class="fu">LinearSpline</span>(kk,<span class="dv">30</span>,<span class="dv">40</span>) </span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>beta  <span class="ot">&lt;-</span> (<span class="dv">16</span><span class="sc">/</span><span class="dv">3</span> <span class="sc">-</span> <span class="dv">1</span>)<span class="sc">*</span><span class="fu">log</span>(jj)<span class="sc">-</span> (<span class="dv">1</span><span class="sc">/</span><span class="dv">3</span>)<span class="sc">*</span>jj  <span class="co"># a is 16/3, b is 1/3 </span></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>gamma <span class="ot">&lt;-</span> <span class="fu">gammafunc</span>(tt)</span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>mu <span class="ot">&lt;-</span> <span class="fu">exp</span>( alpha <span class="sc">+</span> beta <span class="sc">+</span> gamma <span class="sc">+</span> <span class="fl">0.3</span><span class="sc">*</span>beta<span class="sc">*</span><span class="fu">ifelse</span>(kk<span class="sc">&gt;</span><span class="dv">16</span> <span class="sc">&amp;</span> jj<span class="sc">&gt;</span><span class="dv">20</span>,<span class="dv">1</span>,<span class="dv">0</span>))  <span class="co"># need to check</span></span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>varbase <span class="ot">&lt;-</span> (<span class="fl">0.3</span> <span class="sc">*</span> mu[  kk<span class="sc">==</span><span class="dv">1</span> <span class="sc">&amp;</span> jj <span class="sc">==</span><span class="dv">16</span>] )<span class="sc">^</span><span class="dv">2</span> <span class="co"># can scale variance up and down here</span></span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>CC  <span class="ot">&lt;-</span>  varbase <span class="sc">/</span> mu[  kk<span class="sc">==</span><span class="dv">1</span> <span class="sc">&amp;</span> jj <span class="sc">==</span><span class="dv">16</span>]</span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>vars   <span class="ot">&lt;-</span> CC<span class="sc">*</span>mu</span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>tausq  <span class="ot">&lt;-</span> <span class="fu">log</span> (vars <span class="sc">/</span> (mu<span class="sc">^</span><span class="dv">2</span>) <span class="sc">+</span> <span class="dv">1</span>)</span>
+<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>Y <span class="ot">&lt;-</span> <span class="fu">exp</span>( <span class="fu">rnorm</span>( numperiods<span class="sc">^</span><span class="dv">2</span>, <span class="at">mean =</span> <span class="fu">log</span>(mu)<span class="sc">-</span><span class="fl">0.5</span><span class="sc">*</span>tausq , <span class="at">sd =</span> <span class="fu">sqrt</span>(tausq)  ) )</span>
+<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a>train_ind<span class="ot">&lt;-</span>(tt<span class="sc">&lt;=</span>numperiods)  </span>
+<span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-38"><a href="#cb3-38" aria-hidden="true" tabindex="-1"></a>synthetic_data<span class="ot">&lt;-</span><span class="fu">data.frame</span>(Y, kk, jj, tt, mu, train_ind )</span>
+<span id="cb3-39"><a href="#cb3-39" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(synthetic_data)<span class="ot">&lt;-</span><span class="fu">c</span>(<span class="st">"Y"</span>, <span class="st">"acc"</span>, <span class="st">"dev"</span>, <span class="st">"cal"</span>, <span class="st">"mu"</span>, <span class="st">"train_ind"</span>)</span>
+<span id="cb3-40"><a href="#cb3-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-41"><a href="#cb3-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-42"><a href="#cb3-42" aria-hidden="true" tabindex="-1"></a><span class="co"># clean-up</span></span>
+<span id="cb3-43"><a href="#cb3-43" aria-hidden="true" tabindex="-1"></a><span class="fu">rm</span>(Y, kk, jj, tt, mu, train_ind)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p><br><br> Let’s have a look at the data</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(synthetic_data)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>           Y acc dev cal          mu train_ind
+1   242671.2   1   1   1    71653.13      TRUE
+2   164001.3   1   2   2  1042775.62      TRUE
+3  3224477.8   1   3   3  4362599.77      TRUE
+4  3682530.8   1   4   4 10955670.09      TRUE
+5 10149368.6   1   5   5 20800545.12      TRUE
+6 28578274.7   1   6   6 33089166.75      TRUE</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tail</span>(synthetic_data)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>             Y acc dev cal        mu train_ind
+1595 125261750  40  35  74 109039367     FALSE
+1596  62657370  40  36  75  82853302     FALSE
+1597  63467681  40  37  76  62682720     FALSE
+1598  26041979  40  38  77  47227843     FALSE
+1599  33947274  40  39  78  35444881     FALSE
+1600  37258687  40  40  79  26503298     FALSE</code></pre>
+</div>
+</div>
+<p>The points to note about this data frame are:</p>
+<ul>
+<li><code>Y</code> is the comumn containing the data - assumed to be incremental claims payments here</li>
+<li><code>acc</code>, <code>dev</code> and <code>cal</code> are the columns with the accident, development and calendar period labels. Note that development period is numbered from 1.</li>
+<li><code>mu</code> contains the values for <span class="math inline">\(\mu\)</span>, the true underlying mean value according to the model specifications</li>
+<li><code>train_ind</code> is a TRUE/FALSE vector. It is TRUE when the observation is in the past, a.k.a. the training data set and FALSE for future observations (unlike real data, we have the future available for a simulated data set)</li>
+</ul>
+<p><br><br><br></p>
+</section>
+<section id="specifying-the-lasso-model" class="level3">
+<h3 class="anchored" data-anchor-id="specifying-the-lasso-model">Specifying the LASSO model</h3>
+<p>The LASSO model requires data (which we have), basis functions or regressors and model settings for the LASSO procedure. Unlike many regression problems, we actually only have 3 fundamental regressors - accident, development and calendar periods. A key part of our paper was how to expand these into a flexible set of basis functions, capable of capturing a variety of shapes in the model experience.</p>
+<p>In a nutshell, the approach in our paper sets out:</p>
+<ul>
+<li>the use of ramp and interactions of indicator (or heaviside) functions to capture a range of experience</li>
+<li>scaling factors for each of these.</li>
+</ul>
+<p>Since our process is intended to be automatic, we included all functions of accident, development and calendar periods into our synthetic data models, even though that introduces correlations between variables, and examined performance on that basis. For real problems (as in the real data example in the paper) we would recommend more discernment in the selection of which of the effects to include.</p>
+<p><br><br></p>
+<section id="scaling" class="level4">
+<h4 class="anchored" data-anchor-id="scaling">Scaling</h4>
+<p>For now, we are working to replicate the model for synthetic data set 3 so we include all possible functions (and indeed, this data set has accident, development and calendar period effects as well as an interaction). The first step is to calculate the scaling factors for each function derived from each of the three fundamental regressors. As per the paper we use <span class="math inline">\(\rho\)</span> scaling which is calculated as <span class="math inline">\(\sum{\frac{(x-\bar{x})^2}{n}}\)</span> where <span class="math inline">\(\bar{x}\)</span> is the mean of the regressor <span class="math inline">\(x\)</span> and <span class="math inline">\(n\)</span> is the number of elements in the regressor.</p>
+<p>For this synthetic data set, it is important to remember that in the real world, the future data will not be available. So the fundamental vectors are those containing past (or training) data only.</p>
+<p>We also need to calculate the scaling for each of the three regressors, so for coding efficiency and to reduce the risk of bugs, we first write a little function to do the calculations.</p>
+<p>Note that this scaling is a crucial component to the successful implementation of the reserving LASSO. The paper has more details, but basically the size of the parameters has a significant influence on whether they are included in a regularised regression, so if basis functions are on different scales, then this will influence their inclusion in the model.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># function for ease</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>GetScaling <span class="ot">&lt;-</span> <span class="cf">function</span>(vec) {</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  fn <span class="ot">&lt;-</span> <span class="fu">length</span>(vec)</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  fm <span class="ot">&lt;-</span> <span class="fu">mean</span>(vec)</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>  fc <span class="ot">&lt;-</span> vec <span class="sc">-</span> fm</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>  rho_factor <span class="ot">&lt;-</span> ((<span class="fu">sum</span>(fc<span class="sc">^</span><span class="dv">2</span>))<span class="sc">/</span>fn)<span class="sc">^</span><span class="fl">0.5</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Now we apply this function to each of the three fundamental regressors (limited to the training or past data) and store the results in a list.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>synthetic_data_train<span class="ot">&lt;-</span><span class="fu">subset</span>(synthetic_data, train_ind<span class="sc">==</span><span class="cn">TRUE</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>rho_factor_list <span class="ot">&lt;-</span> <span class="fu">vector</span>(<span class="at">mode=</span><span class="st">"list"</span>, <span class="at">length=</span><span class="dv">3</span>)</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(rho_factor_list) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"acc"</span>, <span class="st">"dev"</span>, <span class="st">"cal"</span>)</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (v <span class="cf">in</span> <span class="fu">c</span>(<span class="st">"acc"</span>, <span class="st">"dev"</span>, <span class="st">"cal"</span>)){</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  rho_factor_list[[v]] <span class="ot">&lt;-</span> <span class="fu">GetScaling</span>(synthetic_data_train[[v]])</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(rho_factor_list)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>$acc
+[1] 9.539392
+
+$dev
+[1] 9.539392
+
+$cal
+[1] 9.539392</code></pre>
+</div>
+</div>
+<p>The factors are all equal in this case. In hindsight this makes sense - we have the complete 40 x 40 past triangle, and all regressors are numbered from 1, so all three regressors are permutations of the same numbers.</p>
+<p><br><br></p>
+</section>
+<section id="basis-functions" class="level4">
+<h4 class="anchored" data-anchor-id="basis-functions">Basis functions</h4>
+<p>Our recommended set of basis functions include:</p>
+<ul>
+<li>ramp functions for main effects:
+<ul>
+<li><span class="math inline">\(R_j(i) = \max(j-i, 0)\)</span> for <span class="math inline">\(j=\)</span> accident, development and calendar periods and <span class="math inline">\(i=1, 2, ..., 39\)</span></li>
+</ul></li>
+<li>interactions of the heaviside indicator functions:
+<ul>
+<li><span class="math inline">\(H_j(i) = I(j&gt;=i)\)</span>, i.e.&nbsp;all combinations of <span class="math inline">\(H_{acc}(i) * H_{dev}(k)\)</span>, <span class="math inline">\(H_{acc}(i) * H_{cal}(k)\)</span>, <span class="math inline">\(H_{dev}(i) * H_{cal}(k)\)</span>.</li>
+</ul></li>
+</ul>
+<p><br></p>
+<section id="main-effects---ramp-functions" class="level5">
+<h5 class="anchored" data-anchor-id="main-effects---ramp-functions">Main effects - ramp functions</h5>
+<p>To calculate the ramps we first write a function to do this, since we need to repeat this three times. glmnet expects a matrix of values for the basis functions, so we create a matrix rather than a data.frame. Furthermore, to ensure speed, we preallocate the space to store all the basis functions before running a loop to produce all the ramp functions (many people are scared of loops in R finding them slow, but often this is because they do not preallocate memory beforehand to store the results of the loop)</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>GetRamps <span class="ot">&lt;-</span> <span class="cf">function</span>(vec, vecname, np, scaling){</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="co"># vec = fundamental regressor</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="co"># vecname = name of regressor</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="co"># np = number of periods</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  <span class="co"># scaling = scaling factor to use</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>  <span class="co"># pre-allocate the matrix to hold the results for speed/efficiency</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>  n <span class="ot">&lt;-</span> <span class="fu">length</span>(vec)</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>  nramps <span class="ot">&lt;-</span> (np<span class="dv">-1</span>)</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>  mat <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="at">data=</span><span class="cn">NA</span>, <span class="at">nrow=</span>n, <span class="at">ncol=</span>nramps)</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>  cnames <span class="ot">&lt;-</span> <span class="fu">vector</span>(<span class="at">mode=</span><span class="st">"character"</span>, <span class="at">length=</span>nramps)</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>  col_indx <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>(np<span class="dv">-1</span>)){</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>    col_indx <span class="ot">&lt;-</span> col_indx <span class="sc">+</span> <span class="dv">1</span></span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>    mat[, col_indx] <span class="ot">&lt;-</span> <span class="fu">LinearSpline</span>(vec, i, <span class="dv">999</span>) <span class="sc">/</span> scaling</span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>    cnames[col_indx] <span class="ot">&lt;-</span> <span class="fu">paste0</span>(<span class="st">"L_"</span>, i, <span class="st">"_999_"</span>, vecname)</span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">colnames</span>(mat) <span class="ot">&lt;-</span> cnames</span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-27"><a href="#cb11-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(mat)</span>
+<span id="cb11-28"><a href="#cb11-28" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Now let’s run the function 3 times to get each set of ramp functions and combine them at the end. Note that we produce ramps for the <strong>entire</strong> data set, past and future. This leads to a 1600 x 117 (39*3) matrix.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>main_effects_acc <span class="ot">&lt;-</span> <span class="fu">GetRamps</span>(<span class="at">vec =</span> synthetic_data[[<span class="st">"acc"</span>]], <span class="at">vecname =</span> <span class="st">"acc"</span>, </span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>                             <span class="at">np =</span> numperiods, <span class="at">scaling =</span> rho_factor_list[[<span class="st">"acc"</span>]])</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>main_effects_dev <span class="ot">&lt;-</span> <span class="fu">GetRamps</span>(<span class="at">vec =</span> synthetic_data[[<span class="st">"dev"</span>]], <span class="at">vecname =</span> <span class="st">"dev"</span>, </span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>                             <span class="at">np =</span> numperiods, <span class="at">scaling =</span> rho_factor_list[[<span class="st">"dev"</span>]])</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>main_effects_cal <span class="ot">&lt;-</span> <span class="fu">GetRamps</span>(<span class="at">vec =</span> synthetic_data[[<span class="st">"cal"</span>]], <span class="at">vecname =</span> <span class="st">"cal"</span>, </span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>                             <span class="at">np =</span> numperiods, <span class="at">scaling =</span> rho_factor_list[[<span class="st">"cal"</span>]])</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>main_effects <span class="ot">&lt;-</span> <span class="fu">cbind</span>(main_effects_acc, main_effects_dev, main_effects_cal)</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">dim</span>(main_effects))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1600  117</code></pre>
+</div>
+</div>
+<p><br></p>
+</section>
+</section>
+<section id="interaction-effects---heaviside-functions" class="level4">
+<h4 class="anchored" data-anchor-id="interaction-effects---heaviside-functions">Interaction effects - heaviside functions</h4>
+<p>We follow a similar approach to the above - write a function since we need to call it 3 times. It is even more important to preallocate memory here before looping to create interactions because of the number of these. Without this, the loop would need to copy an ever-growing matrix each time, thereby significantly slowing down runtimes. Our approach of slotting values into reserved space is far more efficient.</p>
+<p>Here’s the function:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>GetInts <span class="ot">&lt;-</span> <span class="cf">function</span>(vec1, vec2, vecname1, vecname2, np, scaling1, scaling2) {</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="co"># pre-allocate the matrix to hold the results for speed/efficiency</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>  n <span class="ot">&lt;-</span> <span class="fu">length</span>(vec1)</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>  nints <span class="ot">&lt;-</span> (np<span class="dv">-1</span>)<span class="sc">*</span>(np<span class="dv">-1</span>)</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>  mat <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="at">data=</span><span class="cn">NA_real_</span>, <span class="at">nrow=</span>n, <span class="at">ncol=</span>nints)</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>  cnames <span class="ot">&lt;-</span> <span class="fu">vector</span>(<span class="at">mode=</span><span class="st">"character"</span>, <span class="at">length=</span>nints)</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>  col_indx <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">2</span><span class="sc">:</span>np){</span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a>    ivec <span class="ot">&lt;-</span> <span class="fu">LinearSpline</span>(vec1, i<span class="dv">-1</span>, i) <span class="sc">/</span> scaling1</span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>    iname <span class="ot">&lt;-</span> <span class="fu">paste0</span>(<span class="st">"I_"</span>, vecname1, <span class="st">"_ge_"</span>, i)</span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="fu">length</span>(ivec[<span class="fu">is.na</span>(ivec)]<span class="sc">&gt;</span><span class="dv">0</span>)) <span class="fu">print</span>(<span class="fu">paste</span>(<span class="st">"NAs in ivec for"</span>, i))</span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb14-20"><a href="#cb14-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">2</span><span class="sc">:</span>np){</span>
+<span id="cb14-21"><a href="#cb14-21" aria-hidden="true" tabindex="-1"></a>      col_indx <span class="ot">&lt;-</span> col_indx <span class="sc">+</span> <span class="dv">1</span>  </span>
+<span id="cb14-22"><a href="#cb14-22" aria-hidden="true" tabindex="-1"></a>      mat[, col_indx] <span class="ot">&lt;-</span> ivec <span class="sc">*</span> <span class="fu">LinearSpline</span>(vec2, j<span class="dv">-1</span>, j) <span class="sc">/</span> scaling2</span>
+<span id="cb14-23"><a href="#cb14-23" aria-hidden="true" tabindex="-1"></a>      cnames[col_indx] <span class="ot">&lt;-</span> <span class="fu">paste0</span>(iname, <span class="st">"*I_"</span>, vecname2, <span class="st">"_ge_"</span>, j)</span>
+<span id="cb14-24"><a href="#cb14-24" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb14-25"><a href="#cb14-25" aria-hidden="true" tabindex="-1"></a>      jvec <span class="ot">&lt;-</span> <span class="fu">LinearSpline</span>(vec2, j<span class="dv">-1</span>, j) <span class="sc">/</span> scaling2</span>
+<span id="cb14-26"><a href="#cb14-26" aria-hidden="true" tabindex="-1"></a>      <span class="cf">if</span> (<span class="fu">length</span>(jvec[<span class="fu">is.na</span>(jvec)]<span class="sc">&gt;</span><span class="dv">0</span>)) <span class="fu">print</span>(<span class="fu">paste</span>(<span class="st">"NAs in jvec for"</span>, j))</span>
+<span id="cb14-27"><a href="#cb14-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-28"><a href="#cb14-28" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb14-29"><a href="#cb14-29" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb14-30"><a href="#cb14-30" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb14-31"><a href="#cb14-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">colnames</span>(mat) <span class="ot">&lt;-</span> cnames</span>
+<span id="cb14-32"><a href="#cb14-32" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb14-33"><a href="#cb14-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(mat)</span>
+<span id="cb14-34"><a href="#cb14-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-35"><a href="#cb14-35" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb14-36"><a href="#cb14-36" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Now we call it and check the dimensions - 1600 x 4563(! 3 * 39 * 39).:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>int_effects <span class="ot">&lt;-</span> <span class="fu">cbind</span>(</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">GetInts</span>(<span class="at">vec1=</span>synthetic_data[[<span class="st">"acc"</span>]], <span class="at">vecname1=</span><span class="st">"acc"</span>, <span class="at">scaling1=</span>rho_factor_list[[<span class="st">"acc"</span>]], <span class="at">np=</span>numperiods, </span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>                       <span class="at">vec2=</span>synthetic_data[[<span class="st">"dev"</span>]], <span class="at">vecname2=</span><span class="st">"dev"</span>, <span class="at">scaling2=</span>rho_factor_list[[<span class="st">"dev"</span>]]),</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">GetInts</span>(<span class="at">vec1=</span>synthetic_data[[<span class="st">"dev"</span>]], <span class="at">vecname1=</span><span class="st">"dev"</span>, <span class="at">scaling1=</span>rho_factor_list[[<span class="st">"dev"</span>]], <span class="at">np=</span>numperiods, </span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>                       <span class="at">vec2=</span>synthetic_data[[<span class="st">"cal"</span>]], <span class="at">vecname2=</span><span class="st">"cal"</span>, <span class="at">scaling2=</span>rho_factor_list[[<span class="st">"cal"</span>]]),</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">GetInts</span>(<span class="at">vec1=</span>synthetic_data[[<span class="st">"acc"</span>]], <span class="at">vecname1=</span><span class="st">"acc"</span>, <span class="at">scaling1=</span>rho_factor_list[[<span class="st">"acc"</span>]], <span class="at">np=</span>numperiods, </span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>                       <span class="at">vec2=</span>synthetic_data[[<span class="st">"cal"</span>]], <span class="at">vecname2=</span><span class="st">"cal"</span>, <span class="at">scaling2=</span>rho_factor_list[[<span class="st">"cal"</span>]])</span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">dim</span>(int_effects))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1600 4563</code></pre>
+</div>
+</div>
+<p>Finally combine the main and interactions effects into a single matrix - <em>varset</em>. Also save a vector containing the training (past) data indicator and get the number of main and interaction effects.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>varset <span class="ot">&lt;-</span> <span class="fu">cbind</span>(main_effects, int_effects)</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>train_ind <span class="ot">&lt;-</span> synthetic_data[[<span class="st">"train_ind"</span>]]</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>num_main_effects <span class="ot">&lt;-</span> <span class="fu">ncol</span>(main_effects)</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>num_interactions <span class="ot">&lt;-</span> <span class="fu">ncol</span>(int_effects)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p><br><br></p>
+</section>
+<section id="lasso-setup" class="level4">
+<h4 class="anchored" data-anchor-id="lasso-setup">LASSO setup</h4>
+<p>The <code>glmnet</code> package has two functions: <code>glmnet</code> and <code>cv.glmnet</code>. <code>glmnet</code> fits a regularised regression model while <code>cv.glmnet</code> fits using cross validation. We make use of both functions, first <code>glmnet</code> to get a vector of LASSO penalties (referred to as <span class="math inline">\(\lambda\)</span>), then <code>cv.glmnet</code> using the <span class="math inline">\(\lambda\)</span>s from <code>glmnet</code> in the cross validation process.</p>
+<p>In addition to the data and basis functions, <code>glmnet</code> and <code>cv.glmnet</code> have a number of tuning parameters. These include:</p>
+<ul>
+<li><p>A set of values for <span class="math inline">\(\lambda\)</span>, the regularision penalty. We use the <span class="math inline">\(\lambda\)</span> vector estimated by <code>glmnet</code> and then extend it further to ensure that we have a comprehensive range of <span class="math inline">\(\lambda\)</span> values for the cross-validation exercise.</p></li>
+<li><p>penalty factors: this is a basis function specific penalty factor so provides the functionality to have different penalties for the different basis functions, i.e.&nbsp;if <span class="math inline">\(pf\)</span> is the vector of penalty functions, then <span class="math inline">\(\lambda {pf}\)</span> is the set of penalty factors used. Here we use the default of the same scaling for all functions (factors of 1 throughout), but we set up a penalty factor vector below in case you would like to experiment with it - e.g.&nbsp;to make interactions less or more likely to be used you could increase/decrease the penalty for interactions.</p></li>
+<li><p><code>pmax</code> - the maximum number of variables ever to be non-zero in a model</p></li>
+<li><p><code>dfmax</code> - maximum number of variables in a model</p></li>
+<li><p><code>family</code> - the response type to use. Of the options offered by the <code>glmnet</code> package, the Poisson is the best selection for a claims reserving model.</p></li>
+</ul>
+<p>The settings we used for the latter 3 are below.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>penalty_factor <span class="ot">&lt;-</span> <span class="fu">c</span>( <span class="fu">rep</span>(<span class="dv">1</span>,num_main_effects), <span class="fu">rep</span>(<span class="dv">1</span>, num_interactions))</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>my_pmax <span class="ot">&lt;-</span> numperiods<span class="sc">^</span><span class="dv">2</span>   <span class="co"># max number of variables ever to be nonzero</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>my_dfmax <span class="ot">&lt;-</span> numperiods<span class="sc">*</span><span class="dv">10</span>  <span class="co">#max number of vars in the model</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>To get the vector <span class="math inline">\(\lambda\)</span> values to use in the cross validation, run <code>glmnet</code> as below. Note that <code>alpha=1</code> makes it fit a LASSO. We have also increased the maximum number of iterations to 200000 since convergence can be slow in this example. The code takes about 13-15 sec on my computer.</p>
+<p>Note we set the <code>standardize</code> argument to false - this is because we use our own standardisation for the basis functions.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>time1 <span class="ot">&lt;-</span> <span class="fu">Sys.time</span>()</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>pre_fit <span class="ot">&lt;-</span> <span class="fu">glmnet</span>(<span class="at">x =</span> varset[train_ind,], </span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>                  <span class="at">y =</span> synthetic_data<span class="sc">$</span>Y[train_ind], </span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>                  <span class="at">family =</span> <span class="st">"poisson"</span>, </span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>                  <span class="at">nlambda =</span> <span class="dv">200</span>, </span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>                  <span class="at">thresh =</span> <span class="fl">1e-08</span>, </span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>                  <span class="at">lambda.min.ratio =</span> <span class="dv">0</span>, </span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>                  <span class="at">dfmax =</span> my_dfmax, </span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>                  <span class="at">pmax =</span> my_pmax, </span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>                  <span class="at">alpha =</span> <span class="dv">1</span>, </span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>                  <span class="at">standardize =</span> <span class="cn">FALSE</span>, </span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>                  <span class="at">penalty.factor =</span> penalty_factor, </span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a>                  <span class="at">maxit =</span> <span class="dv">200000</span>)</span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">paste</span>(<span class="st">"time taken: "</span>, <span class="fu">Sys.time</span>() <span class="sc">-</span> time1))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "time taken:  4.34642100334167"</code></pre>
+</div>
+</div>
+<p>The <span class="math inline">\(\lambda\)</span> vector that we actually used in the cross validation implementation of the LASSO is an extended version of the one automatically generated by <code>glmnet</code>. This is to ensure that we do find the minimum CV error point as sometimes it may be beyond the smallest value for <span class="math inline">\(\lambda\)</span> produced by <code>glmnet</code> above.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>lambdavec <span class="ot">&lt;-</span> <span class="fu">c</span>(pre_fit<span class="sc">$</span>lambda, <span class="fu">min</span>(pre_fit<span class="sc">$</span>lambda)<span class="sc">*</span>(<span class="fl">0.85</span><span class="sc">^</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">50</span>)))  <span class="co"># lengthen lambda vector</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+<section id="fitting-the-lasso-model" class="level3">
+<h3 class="anchored" data-anchor-id="fitting-the-lasso-model">Fitting the LASSO model</h3>
+<p>We now do the actual fitting using 8-fold cross validation (Rob Tibshirani, who wrote the original statistical paper on LASSO, recommends between 5 and 10 folds). We use <code>lambdavec</code>, rather than letting <code>cv.glmnet</code> estimate its own version. Otherwise the settings are the same.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co">#fit now using CV</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>time1 <span class="ot">&lt;-</span> <span class="fu">Sys.time</span>()</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>cv_fit <span class="ot">&lt;-</span> <span class="fu">cv.glmnet</span>(<span class="at">x =</span> varset[train_ind,], </span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>                  <span class="at">y =</span> synthetic_data<span class="sc">$</span>Y[train_ind], </span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>                  <span class="at">family =</span> <span class="st">"poisson"</span>, </span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>                  <span class="at">lambda =</span> lambdavec, </span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>                  <span class="at">nfolds =</span> <span class="dv">8</span>,</span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>                  <span class="at">thresh =</span> <span class="fl">1e-08</span>, </span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>                  <span class="at">lambda.min.ratio =</span> <span class="dv">0</span>, </span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>                  <span class="at">dfmax =</span> my_dfmax, </span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a>                  <span class="at">pmax =</span> my_pmax, </span>
+<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a>                  <span class="at">alpha =</span> <span class="dv">1</span>, </span>
+<span id="cb22-14"><a href="#cb22-14" aria-hidden="true" tabindex="-1"></a>                  <span class="at">standardize =</span> <span class="cn">FALSE</span>, </span>
+<span id="cb22-15"><a href="#cb22-15" aria-hidden="true" tabindex="-1"></a>                  <span class="at">penalty.factor =</span> penalty_factor, </span>
+<span id="cb22-16"><a href="#cb22-16" aria-hidden="true" tabindex="-1"></a>                  <span class="at">maxit =</span> <span class="dv">200000</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: from glmnet C++ code (error code -10194); Number of nonzero
+coefficients along the path exceeds pmax=1600 at 194th lambda value; solutions
+for larger lambdas returned</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: from glmnet C++ code (error code -10196); Number of nonzero
+coefficients along the path exceeds pmax=1600 at 196th lambda value; solutions
+for larger lambdas returned
+
+Warning: from glmnet C++ code (error code -10196); Number of nonzero
+coefficients along the path exceeds pmax=1600 at 196th lambda value; solutions
+for larger lambdas returned
+
+Warning: from glmnet C++ code (error code -10196); Number of nonzero
+coefficients along the path exceeds pmax=1600 at 196th lambda value; solutions
+for larger lambdas returned</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: from glmnet C++ code (error code -10195); Number of nonzero
+coefficients along the path exceeds pmax=1600 at 195th lambda value; solutions
+for larger lambdas returned
+
+Warning: from glmnet C++ code (error code -10195); Number of nonzero
+coefficients along the path exceeds pmax=1600 at 195th lambda value; solutions
+for larger lambdas returned</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: from glmnet C++ code (error code -10196); Number of nonzero
+coefficients along the path exceeds pmax=1600 at 196th lambda value; solutions
+for larger lambdas returned
+
+Warning: from glmnet C++ code (error code -10196); Number of nonzero
+coefficients along the path exceeds pmax=1600 at 196th lambda value; solutions
+for larger lambdas returned</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: from glmnet C++ code (error code -10195); Number of nonzero
+coefficients along the path exceeds pmax=1600 at 195th lambda value; solutions
+for larger lambdas returned</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">paste</span>(<span class="st">"time taken for cross validation fit: "</span>, <span class="fu">Sys.time</span>() <span class="sc">-</span> time1))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "time taken for cross validation fit:  1.13017176389694"</code></pre>
+</div>
+</div>
+<p><br> <em>Eek! C++ error</em> (or Fortran if you’re using an older version of <code>glmnet</code>)</p>
+<p>Yes, there are C++ errors. However, if you read the errors, you see that they result from our settings of the <code>pmax</code> variable. Basically models for the 194th and higher values (and since the <span class="math inline">\(\lambda\)</span> values monotonically decrease this means smaller values) in the <code>lambdavec</code> do not return solutions that meet the constraints on <code>pmax</code>.</p>
+<p>Therefore the errors are not an issue as long as the cross validation process has found a minimum value within the range of <span class="math inline">\(\lambda\)</span> values it does consider. <code>cv.glmnet</code> objects have a plot method associated with them which plots the CV fit, so I’ll use it here to see if a minimum value was identified:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(cv_fit)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-16-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>The dashed lines represent the minimum CV model (smaller <span class="math inline">\(\lambda\)</span>) and one a standard deviation away. These are selections commonly used by modellers. So while we only got models for 194 of the original 250 <span class="math inline">\(\lambda\)</span> values input in <code>lambdavec</code>, these models do include a model which produces the minimum CV error (this is actually that the 148th value in <code>lambdavec</code>).</p>
+<p><br> Given this is simulated data, we can also look at test error - the graph below shows training, test and CV error.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co">#training error</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>predicted_train <span class="ot">&lt;-</span> <span class="fu">exp</span>(<span class="fu">predict</span>(cv_fit, <span class="at">newx =</span> varset[train_ind,], <span class="at">s =</span> cv_fit<span class="sc">$</span>lambda))</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>error_train <span class="ot">&lt;-</span> <span class="fu">colMeans</span>(((synthetic_data<span class="sc">$</span>Y[train_ind] <span class="sc">-</span> predicted_train)<span class="sc">^</span><span class="dv">2</span>) <span class="sc">/</span> predicted_train )</span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a><span class="co">#test error - note </span></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>predicted_test <span class="ot">&lt;-</span> <span class="fu">exp</span>(<span class="fu">predict</span>(cv_fit, <span class="at">newx =</span> varset[<span class="sc">!</span>train_ind,], <span class="at">s =</span> cv_fit<span class="sc">$</span>lambda))</span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a>error_test <span class="ot">&lt;-</span> <span class="fu">colMeans</span>(((synthetic_data<span class="sc">$</span>Y[<span class="sc">!</span>train_ind] <span class="sc">-</span> predicted_test)<span class="sc">^</span><span class="dv">2</span>) <span class="sc">/</span> predicted_test )</span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a><span class="co"># number of parameters in models (df field)</span></span>
+<span id="cb31-11"><a href="#cb31-11" aria-hidden="true" tabindex="-1"></a><span class="co"># since not all lambdas returned values, use length of cv.glmnet object to get the right value</span></span>
+<span id="cb31-12"><a href="#cb31-12" aria-hidden="true" tabindex="-1"></a>use_df <span class="ot">&lt;-</span> cv_fit<span class="sc">$</span>glmnet.fit<span class="sc">$</span>df[<span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(cv_fit<span class="sc">$</span>lambda)]</span>
+<span id="cb31-13"><a href="#cb31-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-14"><a href="#cb31-14" aria-hidden="true" tabindex="-1"></a><span class="co">#make a stacked data set suitable for ggplot [ i.e. tidy format]</span></span>
+<span id="cb31-15"><a href="#cb31-15" aria-hidden="true" tabindex="-1"></a>dferrorg <span class="ot">&lt;-</span> <span class="fu">data.frame</span>( </span>
+<span id="cb31-16"><a href="#cb31-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(use_df), <span class="at">times=</span><span class="dv">3</span>), </span>
+<span id="cb31-17"><a href="#cb31-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rep</span>(use_df, <span class="at">times=</span><span class="dv">3</span>), </span>
+<span id="cb31-18"><a href="#cb31-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">c</span>(error_train, error_test, cv_fit<span class="sc">$</span>cvm)<span class="sc">/</span><span class="dv">1000</span>,</span>
+<span id="cb31-19"><a href="#cb31-19" aria-hidden="true" tabindex="-1"></a>    <span class="fu">c</span>( <span class="fu">rep</span>(<span class="st">"Training error"</span>, <span class="at">times=</span><span class="fu">length</span>(use_df)), <span class="fu">rep</span>(<span class="st">"Test error"</span>, <span class="at">times=</span><span class="fu">length</span>(use_df)), <span class="fu">rep</span>(<span class="st">"CV error"</span>, <span class="at">times=</span><span class="fu">length</span>(use_df)) )</span>
+<span id="cb31-20"><a href="#cb31-20" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb31-21"><a href="#cb31-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-22"><a href="#cb31-22" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(dferrorg)<span class="ot">&lt;-</span><span class="fu">c</span>(<span class="st">"model_number"</span>, <span class="st">"num_params"</span>, <span class="st">"Error"</span>, <span class="st">"labels"</span>)  </span>
+<span id="cb31-23"><a href="#cb31-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-24"><a href="#cb31-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-25"><a href="#cb31-25" aria-hidden="true" tabindex="-1"></a>g <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>dferrorg, <span class="fu">aes</span>(<span class="at">x=</span>model_number, <span class="at">y=</span>Error, <span class="at">colour=</span>labels))<span class="sc">+</span></span>
+<span id="cb31-26"><a href="#cb31-26" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_line</span>(<span class="at">size=</span><span class="fl">1.5</span>, <span class="fu">aes</span>(<span class="at">linetype=</span>labels, <span class="at">colour=</span>labels), <span class="at">alpha=</span><span class="fl">0.8</span>)<span class="sc">+</span></span>
+<span id="cb31-27"><a href="#cb31-27" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme_classic</span>()<span class="sc">+</span></span>
+<span id="cb31-28"><a href="#cb31-28" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">legend.position=</span><span class="st">"bottom"</span>)<span class="sc">+</span></span>
+<span id="cb31-29"><a href="#cb31-29" aria-hidden="true" tabindex="-1"></a>    <span class="fu">labs</span>(<span class="at">x=</span><span class="st">"Model number"</span>, <span class="at">y=</span><span class="st">"Error measure (thousands)"</span>)<span class="sc">+</span></span>
+<span id="cb31-30"><a href="#cb31-30" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_color_manual</span>(<span class="at">name=</span><span class="st">""</span>, <span class="at">values=</span><span class="fu">c</span>(<span class="st">"grey40"</span>, <span class="st">"steelblue3"</span>, <span class="st">"dodgerblue4"</span>))<span class="sc">+</span></span>
+<span id="cb31-31"><a href="#cb31-31" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_linetype_manual</span>(<span class="at">name=</span><span class="st">""</span>, <span class="at">values=</span><span class="fu">c</span>(<span class="st">"solid"</span>, <span class="st">"dashed"</span>, <span class="st">"dotdash"</span>))<span class="sc">+</span></span>
+<span id="cb31-32"><a href="#cb31-32" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_y_log10</span>(<span class="at">labels=</span>scales<span class="sc">::</span>comma)<span class="sc">+</span></span>
+<span id="cb31-33"><a href="#cb31-33" aria-hidden="true" tabindex="-1"></a>    <span class="cn">NULL</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
+ℹ Please use `linewidth` instead.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(g)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-17-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>Happily, low values of the test error align with low CV error values - which is what we would expect to see.</p>
+<p><br><br><br></p>
+</section>
+</section>
+<section id="analysing-the-model" class="level2">
+<h2 class="anchored" data-anchor-id="analysing-the-model">Analysing the model</h2>
+<p>We have used the model corresponding to the minimum CV error in the paper (<code>lambda.min</code> in the <code>cv.glmnet</code> results object, <code>cv_fit</code>. First let’s look at the coefficients in this model.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="co">#all coefficients</span></span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>coefs_min <span class="ot">&lt;-</span> <span class="fu">predict</span>(cv_fit, <span class="at">type =</span> <span class="st">"coefficients"</span>, <span class="at">s =</span> cv_fit<span class="sc">$</span>lambda.min)</span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>coefnames <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Intercept"</span>, <span class="fu">colnames</span>(varset))</span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a><span class="co">#indicators for non-zero ones</span></span>
+<span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a>ind_nz_min<span class="ot">&lt;-</span><span class="fu">which</span>(<span class="sc">!</span>(coefs_min <span class="sc">==</span> <span class="dv">0</span>))</span>
+<span id="cb34-7"><a href="#cb34-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a><span class="co">#non-zero coefficient</span></span>
+<span id="cb34-9"><a href="#cb34-9" aria-hidden="true" tabindex="-1"></a>nzcoefs_min<span class="ot">&lt;-</span><span class="fu">cbind</span>(coefs_min[ind_nz_min,])</span>
+<span id="cb34-10"><a href="#cb34-10" aria-hidden="true" tabindex="-1"></a><span class="fu">rownames</span>(nzcoefs_min)<span class="ot">&lt;-</span>coefnames[ind_nz_min]</span>
+<span id="cb34-11"><a href="#cb34-11" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(nzcoefs_min)<span class="ot">&lt;-</span><span class="fu">c</span>(<span class="st">"coefficients [min CV model]"</span>)</span>
+<span id="cb34-12"><a href="#cb34-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-13"><a href="#cb34-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-14"><a href="#cb34-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-15"><a href="#cb34-15" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">paste</span>(<span class="st">"Number of non-zero coefficients in min CV model:"</span>, <span class="fu">length</span>(nzcoefs_min)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "Number of non-zero coefficients in min CV model: 85"</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(nzcoefs_min)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                        coefficients [min CV model]
+Intercept                            12.90849895417
+L_3_999_acc                          -0.17095450637
+L_6_999_acc                           0.20215489391
+L_8_999_acc                          -0.13683790320
+L_9_999_acc                          -0.00672219179
+L_10_999_acc                         -0.00726869288
+L_11_999_acc                         -0.02324637560
+L_12_999_acc                          0.35610588121
+L_14_999_acc                         -0.18739289324
+L_15_999_acc                          0.40181872536
+L_16_999_acc                          0.87558147351
+L_18_999_acc                         -0.51019658081
+L_19_999_acc                         -0.16864837024
+L_20_999_acc                         -1.43901710510
+L_21_999_acc                          0.00953494458
+L_23_999_acc                         -0.79245485689
+L_24_999_acc                          1.24495947878
+L_25_999_acc                         -0.93508762388
+L_26_999_acc                          0.33765209395
+L_30_999_acc                         -0.70157532215
+L_33_999_acc                          0.50643664885
+L_1_999_dev                           8.99462964815
+L_2_999_dev                          -0.01963810231
+L_3_999_dev                          -0.07441073323
+L_4_999_dev                          -3.07653125091
+L_5_999_dev                          -2.80431595417
+L_6_999_dev                          -0.68784568387
+L_7_999_dev                          -0.75804244038
+L_8_999_dev                          -0.98088685136
+L_9_999_dev                          -0.22339931944
+L_10_999_dev                         -0.29737981962
+L_11_999_dev                         -0.65592214772
+L_12_999_dev                         -0.35450910869
+L_13_999_dev                         -0.14473152235
+L_14_999_dev                          0.04054774684
+L_15_999_dev                         -0.77588437653
+L_17_999_dev                         -0.03182416050
+L_19_999_dev                          0.67859925448
+L_21_999_dev                         -1.60282885957
+L_22_999_dev                         -0.36525224424
+L_24_999_dev                          1.09988156299
+L_26_999_dev                         -1.09424407364
+L_27_999_dev                         -0.16350776769
+L_29_999_dev                          0.88266161355
+L_35_999_dev                          1.18335659429
+L_36_999_dev                          3.25213216711
+L_1_999_cal                           1.18058085440
+L_8_999_cal                          -0.00180679927
+L_10_999_cal                         -0.04581221350
+L_11_999_cal                         -0.00001361552
+L_13_999_cal                         -0.59595307177
+L_15_999_cal                          0.35077255812
+L_16_999_cal                          0.23459205760
+L_17_999_cal                          0.04789305662
+L_20_999_cal                          0.01820235961
+L_21_999_cal                          0.00556136996
+L_22_999_cal                         -0.05372168891
+L_24_999_cal                         -0.39892379337
+L_26_999_cal                          0.12054004117
+L_28_999_cal                          0.16486697229
+L_29_999_cal                          0.18948697651
+L_31_999_cal                          0.13696526866
+L_32_999_cal                         -0.83932209806
+L_33_999_cal                          0.45155054841
+L_34_999_cal                          0.03672726734
+L_35_999_cal                         -0.23243271370
+L_36_999_cal                          0.90085223804
+L_37_999_cal                         -0.54525546512
+L_38_999_cal                          0.50161027719
+L_39_999_cal                         -0.74904518519
+I_acc_ge_17*I_dev_ge_19               5.51496375492
+I_acc_ge_17*I_dev_ge_20               0.57649450728
+I_acc_ge_17*I_dev_ge_21             137.29149923902
+I_acc_ge_18*I_dev_ge_21               6.45465886915
+I_acc_ge_20*I_dev_ge_17              -1.11190506997
+I_acc_ge_21*I_dev_ge_9                0.20809435323
+I_dev_ge_10*I_cal_ge_31              -2.32990877614
+I_dev_ge_12*I_cal_ge_26              -0.80542334565
+I_dev_ge_13*I_cal_ge_37               1.16374401723
+I_dev_ge_14*I_cal_ge_26              -0.44214160981
+I_dev_ge_22*I_cal_ge_39               1.78463874002
+I_acc_ge_20*I_cal_ge_36              -0.18540638362
+I_acc_ge_20*I_cal_ge_37              -4.85927414746
+I_acc_ge_20*I_cal_ge_38              -2.86273840469
+I_acc_ge_21*I_cal_ge_31               0.29625590769</code></pre>
+</div>
+</div>
+<p>Note the interactions at the end. Are these detecting the interaction that we know is in this simulated data set? We will find out below.</p>
+<p><br></p>
+<p>It is also useful to look at actual and fitted plots for the different predictors. The paper shows a number of these.</p>
+<p>To produce these plots, we first add the column of fitted values to the data.frame holding the data using the <code>predict</code> method for a <code>cv.glmnet</code> object. Our selected model is that corresponding to the minimum CV error, which is corresponds to the <span class="math inline">\(\lambda\)</span> stored by the <code>cv_fit$lambda_min</code> component of the <code>cv.glmnet</code> object.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>synthetic_data<span class="sc">$</span>fitted_lasso<span class="ot">&lt;-</span> <span class="fu">as.vector</span>(<span class="fu">exp</span>(<span class="fu">predict</span>(cv_fit, <span class="at">newx =</span> varset, <span class="at">s =</span> cv_fit<span class="sc">$</span>lambda.min)) )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The function below produces the tracking graphs shown in the paper - plot values for all levels of one fundamental predictor holding a second predictor at a fixed value. To help with looking at the data, it also shades the past part of the data in grey.</p>
+<p>Since <code>ggplot2</code> is a tidyverse package, it is easiest to put our data into <em>tidy</em> format (essentially stacked/long output) prior to using <code>ggplot</code>.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>GraphModelVals<span class="ot">&lt;-</span><span class="cf">function</span>(data, primary_predictor, secondary_predictor, secondary_predictor_val, fitted_name, predictor_label){</span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">#extract data we want to use</span></span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a>    use_data <span class="ot">&lt;-</span> data[data[[secondary_predictor]] <span class="sc">==</span> secondary_predictor_val,]</span>
+<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-6"><a href="#cb39-6" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb39-7"><a href="#cb39-7" aria-hidden="true" tabindex="-1"></a>    <span class="co"># turn into tidy layout - note that we have simulated data, underlying mean, fitted data all to stack.</span></span>
+<span id="cb39-8"><a href="#cb39-8" aria-hidden="true" tabindex="-1"></a>    data_tidy <span class="ot">&lt;-</span> <span class="fu">data.frame</span>( </span>
+<span id="cb39-9"><a href="#cb39-9" aria-hidden="true" tabindex="-1"></a>      <span class="fu">rep</span>(use_data[[primary_predictor]], <span class="at">times=</span><span class="dv">3</span>),</span>
+<span id="cb39-10"><a href="#cb39-10" aria-hidden="true" tabindex="-1"></a>      <span class="fu">c</span>(use_data[[<span class="st">"Y"</span>]], use_data[[<span class="st">"mu"</span>]], use_data[[fitted_name]]),</span>
+<span id="cb39-11"><a href="#cb39-11" aria-hidden="true" tabindex="-1"></a>      <span class="fu">c</span>(<span class="fu">rep</span>(<span class="st">"Simulated"</span>, <span class="at">times=</span><span class="fu">nrow</span>(use_data)), <span class="fu">rep</span>(<span class="st">"Underlying"</span>, <span class="at">times=</span><span class="fu">nrow</span>(use_data)), <span class="fu">rep</span>(<span class="st">"Lasso"</span>, <span class="at">times=</span><span class="fu">nrow</span>(use_data))) </span>
+<span id="cb39-12"><a href="#cb39-12" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb39-13"><a href="#cb39-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">colnames</span>(data_tidy) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"predictor"</span>, <span class="st">"values"</span>, <span class="st">"data_labels"</span>)</span>
+<span id="cb39-14"><a href="#cb39-14" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb39-15"><a href="#cb39-15" aria-hidden="true" tabindex="-1"></a>    data_tidy<span class="sc">$</span>values <span class="ot">&lt;-</span> <span class="fu">log</span>(data_tidy<span class="sc">$</span>values)</span>
+<span id="cb39-16"><a href="#cb39-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-17"><a href="#cb39-17" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb39-18"><a href="#cb39-18" aria-hidden="true" tabindex="-1"></a>    <span class="co"># extract values for past rectangle</span></span>
+<span id="cb39-19"><a href="#cb39-19" aria-hidden="true" tabindex="-1"></a>    xmin1 <span class="ot">&lt;-</span> <span class="fu">min</span>(use_data[[primary_predictor]][use_data<span class="sc">$</span>train_ind<span class="sc">==</span><span class="cn">TRUE</span>])</span>
+<span id="cb39-20"><a href="#cb39-20" aria-hidden="true" tabindex="-1"></a>    xmax1 <span class="ot">&lt;-</span> <span class="fu">max</span>(use_data[[primary_predictor]][use_data<span class="sc">$</span>train_ind<span class="sc">==</span><span class="cn">TRUE</span>])</span>
+<span id="cb39-21"><a href="#cb39-21" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb39-22"><a href="#cb39-22" aria-hidden="true" tabindex="-1"></a>    ymin1 <span class="ot">&lt;-</span> <span class="fu">min</span>(data_tidy<span class="sc">$</span>values)<span class="sc">*</span><span class="fl">0.95</span></span>
+<span id="cb39-23"><a href="#cb39-23" aria-hidden="true" tabindex="-1"></a>    ymax1 <span class="ot">&lt;-</span> <span class="fu">max</span>(data_tidy<span class="sc">$</span>values)<span class="sc">*</span><span class="fl">1.05</span></span>
+<span id="cb39-24"><a href="#cb39-24" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb39-25"><a href="#cb39-25" aria-hidden="true" tabindex="-1"></a>    g <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>data_tidy, <span class="fu">aes</span>(<span class="at">x=</span>predictor, <span class="at">y=</span>values, <span class="at">group=</span>data_labels))<span class="sc">+</span></span>
+<span id="cb39-26"><a href="#cb39-26" aria-hidden="true" tabindex="-1"></a>      <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">linetype=</span>data_labels, <span class="at">colour=</span>data_labels, <span class="at">size=</span>data_labels, <span class="at">alpha=</span>data_labels))<span class="sc">+</span></span>
+<span id="cb39-27"><a href="#cb39-27" aria-hidden="true" tabindex="-1"></a>      <span class="fu">scale_colour_manual</span>(<span class="at">name=</span><span class="st">""</span>, <span class="at">values=</span><span class="fu">c</span>(<span class="st">"indianred4"</span>, <span class="st">"slategrey"</span>, <span class="st">"slategrey"</span>))<span class="sc">+</span></span>
+<span id="cb39-28"><a href="#cb39-28" aria-hidden="true" tabindex="-1"></a>      <span class="fu">scale_linetype_manual</span>(<span class="at">name=</span><span class="st">""</span>, <span class="at">values=</span><span class="fu">c</span>(<span class="st">"solid"</span>, <span class="st">"solid"</span>, <span class="st">"dotted"</span>))<span class="sc">+</span></span>
+<span id="cb39-29"><a href="#cb39-29" aria-hidden="true" tabindex="-1"></a>      <span class="fu">scale_size_manual</span>(<span class="at">name=</span><span class="st">""</span>, <span class="at">values=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>,<span class="dv">1</span>))<span class="sc">+</span></span>
+<span id="cb39-30"><a href="#cb39-30" aria-hidden="true" tabindex="-1"></a>      <span class="fu">scale_alpha_manual</span>(<span class="at">name=</span><span class="st">""</span>, <span class="at">values=</span><span class="fu">c</span>(<span class="fl">0.8</span>, <span class="fl">0.5</span>, <span class="fl">0.5</span>))<span class="sc">+</span></span>
+<span id="cb39-31"><a href="#cb39-31" aria-hidden="true" tabindex="-1"></a>      <span class="fu">theme_classic</span>()<span class="sc">+</span></span>
+<span id="cb39-32"><a href="#cb39-32" aria-hidden="true" tabindex="-1"></a>      <span class="fu">annotate</span>(<span class="at">geom=</span><span class="st">"rect"</span>, <span class="at">xmin=</span>xmin1, <span class="at">xmax=</span>xmax1, <span class="at">ymin=</span>ymin1, <span class="at">ymax=</span>ymax1, <span class="at">alpha=</span><span class="fl">0.1</span>)<span class="sc">+</span></span>
+<span id="cb39-33"><a href="#cb39-33" aria-hidden="true" tabindex="-1"></a>      <span class="fu">theme</span>(<span class="at">legend.position=</span><span class="st">"bottom"</span>)<span class="sc">+</span></span>
+<span id="cb39-34"><a href="#cb39-34" aria-hidden="true" tabindex="-1"></a>      <span class="fu">labs</span>(<span class="at">x=</span>predictor_label, <span class="at">y=</span><span class="st">"Log(Payments)"</span>, <span class="at">title=</span><span class="fu">paste</span>(predictor_label, <span class="st">"tracking for"</span>, secondary_predictor, <span class="st">"="</span>, secondary_predictor_val))</span>
+<span id="cb39-35"><a href="#cb39-35" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb39-36"><a href="#cb39-36" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb39-37"><a href="#cb39-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-38"><a href="#cb39-38" aria-hidden="true" tabindex="-1"></a>  <span class="fu">invisible</span>(<span class="fu">list</span>(<span class="at">data=</span>data_tidy, <span class="at">graph=</span>g))</span>
+<span id="cb39-39"><a href="#cb39-39" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Now let’s look at development quarter when accident quarter is 20. Remember the step-interaction starts at dev=21 - which we see in the graph.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>dev_graph_list <span class="ot">&lt;-</span> <span class="fu">GraphModelVals</span>(<span class="at">data =</span> synthetic_data, </span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>                             <span class="at">primary_predictor =</span> <span class="st">"dev"</span>, </span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>                             <span class="at">secondary_predictor =</span> <span class="st">"acc"</span>, </span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a>                             <span class="at">secondary_predictor_val =</span> <span class="dv">20</span>, </span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a>                             <span class="at">fitted_name =</span> <span class="st">"fitted_lasso"</span>,</span>
+<span id="cb40-6"><a href="#cb40-6" aria-hidden="true" tabindex="-1"></a>                             <span class="at">predictor_label =</span> <span class="st">"Development quarter"</span>)</span>
+<span id="cb40-7"><a href="#cb40-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-8"><a href="#cb40-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-9"><a href="#cb40-9" aria-hidden="true" tabindex="-1"></a>dev_graph_list<span class="sc">$</span>graph</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-21-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>Similarly we can look at accident quarter tracking when development quarter is 24 and again see the interaction.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>acc_graph_list <span class="ot">&lt;-</span> <span class="fu">GraphModelVals</span>(<span class="at">data =</span> synthetic_data, </span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>                             <span class="at">primary_predictor =</span> <span class="st">"acc"</span>, </span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>                             <span class="at">secondary_predictor =</span> <span class="st">"dev"</span>, </span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>                             <span class="at">secondary_predictor_val =</span> <span class="dv">24</span>, </span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a>                             <span class="at">fitted_name =</span> <span class="st">"fitted_lasso"</span>,</span>
+<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a>                             <span class="at">predictor_label =</span> <span class="st">"Accident quarter"</span>)</span>
+<span id="cb41-7"><a href="#cb41-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-8"><a href="#cb41-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-9"><a href="#cb41-9" aria-hidden="true" tabindex="-1"></a>acc_graph_list<span class="sc">$</span>graph</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-22-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>You should, of course, carry out a full model validation exercise on any model prior to use, examining residuals, triangular heat maps and tweak the model if needed.</p>
+<p><br><br><br></p>
+</section>
+<section id="claims-reserves" class="level2">
+<h2 class="anchored" data-anchor-id="claims-reserves">Claims reserves</h2>
+<p>Finally, let’s get some claims reserve estimates and compare to those from an 8-period chain ladder.</p>
+<p>First let’s calculate the chainladder reserve.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="co"># cumulative payments on training data set</span></span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>synthetic_data_train<span class="sc">$</span>Ycum <span class="ot">&lt;-</span> <span class="fu">unlist</span>(<span class="fu">tapply</span>(synthetic_data_train<span class="sc">$</span>Y, synthetic_data_train<span class="sc">$</span>acc, cumsum))</span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a><span class="co"># calc cl factors using an 8 quarter average</span></span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a>cl_fac <span class="ot">&lt;-</span> <span class="fu">numeric</span>(numperiods<span class="dv">-1</span>)</span>
+<span id="cb42-6"><a href="#cb42-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-7"><a href="#cb42-7" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>numperiods<span class="dv">-1</span>){</span>
+<span id="cb42-8"><a href="#cb42-8" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb42-9"><a href="#cb42-9" aria-hidden="true" tabindex="-1"></a>  cl_fac[j] <span class="ot">&lt;-</span> <span class="fu">sum</span>(<span class="fu">subset</span>(synthetic_data_train, dev <span class="sc">==</span> j<span class="sc">+</span><span class="dv">1</span> <span class="sc">&amp;</span> acc <span class="sc">&gt;</span> (numperiods<span class="dv">-8</span><span class="sc">-</span>j) <span class="sc">&amp;</span> acc <span class="sc">&lt;=</span> numperiods<span class="sc">-</span>j)<span class="sc">$</span>Ycum) <span class="sc">/</span> </span>
+<span id="cb42-10"><a href="#cb42-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sum</span>(<span class="fu">subset</span>(synthetic_data_train, dev <span class="sc">==</span> j <span class="sc">&amp;</span> acc <span class="sc">&gt;</span> (numperiods<span class="dv">-8</span><span class="sc">-</span>j) <span class="sc">&amp;</span> acc <span class="sc">&lt;=</span> numperiods<span class="sc">-</span>j)<span class="sc">$</span>Ycum)</span>
+<span id="cb42-11"><a href="#cb42-11" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb42-12"><a href="#cb42-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-13"><a href="#cb42-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-14"><a href="#cb42-14" aria-hidden="true" tabindex="-1"></a><span class="co"># accumulate the CL factors</span></span>
+<span id="cb42-15"><a href="#cb42-15" aria-hidden="true" tabindex="-1"></a>cl_cum <span class="ot">&lt;-</span> <span class="fu">cumprod</span>(<span class="fu">rev</span>(cl_fac))</span>
+<span id="cb42-16"><a href="#cb42-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-17"><a href="#cb42-17" aria-hidden="true" tabindex="-1"></a><span class="co"># leading diagonal</span></span>
+<span id="cb42-18"><a href="#cb42-18" aria-hidden="true" tabindex="-1"></a>leading_diagonal <span class="ot">&lt;-</span> <span class="fu">subset</span>(synthetic_data_train, cal <span class="sc">==</span> numperiods <span class="sc">&amp;</span> acc<span class="sc">&gt;</span><span class="dv">1</span>)<span class="sc">$</span>Ycum</span>
+<span id="cb42-19"><a href="#cb42-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-20"><a href="#cb42-20" aria-hidden="true" tabindex="-1"></a><span class="co"># CL amounts now</span></span>
+<span id="cb42-21"><a href="#cb42-21" aria-hidden="true" tabindex="-1"></a>cl_os <span class="ot">&lt;-</span> cl_cum <span class="sc">*</span> leading_diagonal <span class="sc">-</span> leading_diagonal</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Running the code shows that the reserve for accident period 40 is a bit high(!) - so the y-axis scale on any plots may need to be adjusted for display purposes.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="st">"CL outstanding estimates"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "CL outstanding estimates"</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>( <span class="fu">data.frame</span>(<span class="at">Accident=</span>numperiods<span class="sc">:</span><span class="dv">2</span>, <span class="at">os =</span> <span class="fu">rev</span>(cl_os<span class="sc">/</span><span class="dv">1000000000</span>)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  Accident        os
+1       40 488.32119
+2       39  13.97485
+3       38  21.60132
+4       37  17.46894
+5       36  21.27673
+6       35  22.05057</code></pre>
+</div>
+</div>
+<p>We use the <code>tapply</code> function to calculate the outstanding amounts by accident period for the LASSO model as well as the true values (both the “actual” simulated values and the true underlying values).</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a>synthetic_data_test <span class="ot">&lt;-</span> <span class="fu">subset</span>(synthetic_data, train_ind <span class="sc">==</span> <span class="cn">FALSE</span>)</span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>lasso_os <span class="ot">&lt;-</span> <span class="fu">tapply</span>(synthetic_data_test<span class="sc">$</span>fitted_lasso, synthetic_data_test<span class="sc">$</span>acc, sum)</span>
+<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>sim_os <span class="ot">&lt;-</span> <span class="fu">tapply</span>(synthetic_data_test<span class="sc">$</span>Y, synthetic_data_test<span class="sc">$</span>acc, sum)</span>
+<span id="cb47-5"><a href="#cb47-5" aria-hidden="true" tabindex="-1"></a>true_os <span class="ot">&lt;-</span> <span class="fu">tapply</span>(synthetic_data_test<span class="sc">$</span>mu, synthetic_data_test<span class="sc">$</span>acc, sum)</span>
+<span id="cb47-6"><a href="#cb47-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-7"><a href="#cb47-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-8"><a href="#cb47-8" aria-hidden="true" tabindex="-1"></a><span class="co">#combine into a tidy dataset for ggplot</span></span>
+<span id="cb47-9"><a href="#cb47-9" aria-hidden="true" tabindex="-1"></a><span class="co"># add a linetype option to have different linetypes</span></span>
+<span id="cb47-10"><a href="#cb47-10" aria-hidden="true" tabindex="-1"></a>compare_os <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb47-11"><a href="#cb47-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rep</span>(<span class="dv">2</span><span class="sc">:</span>numperiods, <span class="at">times=</span><span class="dv">4</span>), </span>
+<span id="cb47-12"><a href="#cb47-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">c</span>(sim_os, lasso_os, cl_os, true_os)<span class="sc">/</span><span class="dv">1000000000</span>,</span>
+<span id="cb47-13"><a href="#cb47-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">c</span>(<span class="fu">rep</span>(<span class="st">"Simulated"</span>, <span class="at">times=</span>numperiods<span class="dv">-1</span>), <span class="fu">rep</span>(<span class="st">"Lasso"</span>, <span class="at">times=</span>numperiods<span class="dv">-1</span>), <span class="fu">rep</span>(<span class="st">"Chainladder (8 qtr)"</span>, <span class="at">times=</span>numperiods<span class="dv">-1</span>), <span class="fu">rep</span>(<span class="st">"Underlying"</span>, <span class="at">times=</span>numperiods<span class="dv">-1</span>) )</span>
+<span id="cb47-14"><a href="#cb47-14" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb47-15"><a href="#cb47-15" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(compare_os)<span class="ot">&lt;-</span><span class="fu">c</span>(<span class="st">"Accident"</span>, <span class="st">"Outstanding"</span>, <span class="st">"data_labels"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Here’s a plot of the results (similar to that in the paper). Note that the y-axis is restricted for readability so that the actual chain ladder value for accident period 40 does not display on the graph.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a>os_plot <span class="ot">&lt;-</span></span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggplot</span>(<span class="at">data=</span>compare_os, <span class="fu">aes</span>(<span class="at">x=</span>Accident, <span class="at">y=</span>Outstanding, <span class="at">group=</span>data_labels))<span class="sc">+</span></span>
+<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">colour=</span>data_labels, <span class="at">linetype=</span>data_labels), <span class="at">alpha=</span><span class="fl">0.8</span>, <span class="at">size=</span><span class="fl">0.75</span>)<span class="sc">+</span></span>
+<span id="cb48-4"><a href="#cb48-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_colour_manual</span>(<span class="at">name=</span><span class="st">""</span>, <span class="at">values=</span><span class="fu">c</span>(<span class="st">"steelblue3"</span>, <span class="st">"indianred4"</span>, <span class="st">"slategrey"</span>, <span class="st">"slategrey"</span> ))<span class="sc">+</span></span>
+<span id="cb48-5"><a href="#cb48-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_linetype_manual</span>(<span class="at">name=</span><span class="st">""</span>, <span class="at">values=</span><span class="fu">c</span>(<span class="st">"dashed"</span>, <span class="st">"solid"</span>, <span class="st">"dotted"</span>, <span class="st">"solid"</span> ))<span class="sc">+</span></span>
+<span id="cb48-6"><a href="#cb48-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_line</span>(<span class="at">data=</span><span class="fu">subset</span>(compare_os, data_labels<span class="sc">==</span><span class="st">"Lasso"</span>), <span class="fu">aes</span>(<span class="at">colour=</span>data_labels), <span class="at">size=</span><span class="fl">1.25</span>, <span class="at">alpha=</span><span class="fl">0.8</span>, <span class="at">colour=</span><span class="st">"indianred4"</span>, <span class="at">linetype=</span><span class="st">"solid"</span>)<span class="sc">+</span></span>
+<span id="cb48-7"><a href="#cb48-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_cartesian</span>(<span class="at">ylim=</span><span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">40</span>))<span class="sc">+</span></span>
+<span id="cb48-8"><a href="#cb48-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme_classic</span>()<span class="sc">+</span></span>
+<span id="cb48-9"><a href="#cb48-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">legend.position=</span><span class="st">"bottom"</span>, <span class="at">legend.title=</span><span class="fu">element_blank</span>())<span class="sc">+</span></span>
+<span id="cb48-10"><a href="#cb48-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_y_continuous</span>(<span class="at">labels=</span>scales<span class="sc">::</span>comma)<span class="sc">+</span></span>
+<span id="cb48-11"><a href="#cb48-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">labs</span>(<span class="at">x=</span><span class="st">"Accident quarter"</span>, <span class="at">y=</span><span class="st">"Amount ($B)"</span>)<span class="sc">+</span></span>
+<span id="cb48-12"><a href="#cb48-12" aria-hidden="true" tabindex="-1"></a>    <span class="cn">NULL</span></span>
+<span id="cb48-13"><a href="#cb48-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-14"><a href="#cb48-14" aria-hidden="true" tabindex="-1"></a>os_plot</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-26-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>You can see from the graph that - despite the presence of an interaction affecting only a small number of cells, the LASSO model detects and responds appropriately to this change. By contrast, the chain ladder model does not perform so well.</p>
+<p><br><br><br></p>
+</section>
+<section id="conclusion" class="level2">
+<h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
+<p>The aim of this article has been to demonstrate the fitting of a claims reserving model using a LASSO approach in R and to produce some of the model diagnostic and results output that a user might wish to examine. If you would like to experiment some more, you could try modifying the synthetic data set code to produce other types of simulated data (such as those in our paper), or try it out on a real data example.</p>
+</section>
+<section id="session-information" class="level2">
+<h2 class="anchored" data-anchor-id="session-information">Session information</h2>
+<p>To assist with reproducibility, here are details of my R session.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>R version 4.2.3 (2023-03-15 ucrt)
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+Running under: Windows 10 x64 (build 19045)
+
+Matrix products: default
+
+locale:
+[1] LC_COLLATE=English_Australia.utf8  LC_CTYPE=English_Australia.utf8   
+[3] LC_MONETARY=English_Australia.utf8 LC_NUMERIC=C                      
+[5] LC_TIME=English_Australia.utf8    
+
+attached base packages:
+[1] stats     graphics  grDevices datasets  utils     methods   base     
+
+other attached packages:
+[1] ggplot2_3.4.2 glmnet_4.1-7  Matrix_1.5-3 
+
+loaded via a namespace (and not attached):
+ [1] Rcpp_1.0.10       compiler_4.2.3    pillar_1.9.0      iterators_1.0.14 
+ [5] tools_4.2.3       digest_0.6.31     jsonlite_1.8.4    evaluate_0.20    
+ [9] lifecycle_1.0.3   tibble_3.2.1      gtable_0.3.3      lattice_0.20-45  
+[13] pkgconfig_2.0.3   rlang_1.1.1       foreach_1.5.2     cli_3.6.1        
+[17] yaml_2.3.7        xfun_0.39         fastmap_1.1.1     withr_2.5.0      
+[21] knitr_1.42        htmlwidgets_1.6.2 vctrs_0.6.2       grid_4.2.3       
+[25] glue_1.6.2        R6_2.5.1          fansi_1.0.4       survival_3.5-3   
+[29] rmarkdown_2.21    farver_2.1.1      magrittr_2.0.3    scales_1.2.1     
+[33] codetools_0.2-19  htmltools_0.5.5   splines_4.2.3     shape_1.4.6      
+[37] colorspace_2.1-0  renv_0.17.3       labeling_0.4.2    utf8_1.2.3       
+[41] munsell_0.5.0    </code></pre>
+</div>
+</div>
+
+
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents"><h2 class="anchored quarto-appendix-heading">Reuse</h2><div id="quarto-reuse" class="quarto-appendix-contents"><div><a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">https://creativecommons.org/licenses/by-sa/4.0/</a></div></div></section></div></main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>

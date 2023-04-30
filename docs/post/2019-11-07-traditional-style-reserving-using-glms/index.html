@@ -1,0 +1,1653 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.330">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Grainne McGuire">
+<meta name="dcterms.date" content="2019-11-07">
+<meta name="description" content="This post provides a worked example in R of fitting a GLM to some non-life claims reserving data">
+
+<title>Code snippets - Traditional-style reserving using GLMs</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<script src="../../site_libs/quarto-html/quarto.js"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit"
+  }
+}</script>
+
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<link rel="stylesheet" href="../../styles.css">
+</head>
+
+<body class="nav-fixed">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">Code snippets</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../index.html" rel="" target="">
+ <span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html" rel="" target="">
+ <span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../post.html" rel="" target="">
+ <span class="menu-text">Posts</span></a>
+  </li>  
+</ul>
+            <div class="quarto-navbar-tools ms-auto">
+</div>
+          </div> <!-- /navcollapse -->
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">Traditional-style reserving using GLMs</h1>
+                  <div>
+        <div class="description">
+          This post provides a worked example in R of fitting a GLM to some non-life claims reserving data
+        </div>
+      </div>
+                          <div class="quarto-categories">
+                <div class="quarto-category">GLM</div>
+                <div class="quarto-category">R</div>
+                <div class="quarto-category">Reserving</div>
+              </div>
+                  </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Grainne McGuire </p>
+            </div>
+    </div>
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">November 7, 2019</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#april-2023-update" id="toc-april-2023-update" class="nav-link active" data-scroll-target="#april-2023-update">April 2023 update</a></li>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link" data-scroll-target="#introduction">Introduction</a></li>
+  <li><a href="#setup" id="toc-setup" class="nav-link" data-scroll-target="#setup">Setup</a></li>
+  <li><a href="#data" id="toc-data" class="nav-link" data-scroll-target="#data">Data</a></li>
+  <li><a href="#modelling" id="toc-modelling" class="nav-link" data-scroll-target="#modelling">Modelling</a>
+  <ul class="collapse">
+  <li><a href="#initial-model" id="toc-initial-model" class="nav-link" data-scroll-target="#initial-model">Initial model</a></li>
+  <li><a href="#loss-reserve" id="toc-loss-reserve" class="nav-link" data-scroll-target="#loss-reserve">Loss reserve</a></li>
+  <li><a href="#model-diagnostics" id="toc-model-diagnostics" class="nav-link" data-scroll-target="#model-diagnostics">Model diagnostics</a></li>
+  </ul></li>
+  <li><a href="#refining-the-model" id="toc-refining-the-model" class="nav-link" data-scroll-target="#refining-the-model">Refining the model</a>
+  <ul class="collapse">
+  <li><a href="#simplifying-the-model" id="toc-simplifying-the-model" class="nav-link" data-scroll-target="#simplifying-the-model">Simplifying the model</a></li>
+  <li><a href="#accident-year" id="toc-accident-year" class="nav-link" data-scroll-target="#accident-year">Accident year</a></li>
+  <li><a href="#development-year" id="toc-development-year" class="nav-link" data-scroll-target="#development-year">Development year</a></li>
+  <li><a href="#identifying-missing-structure" id="toc-identifying-missing-structure" class="nav-link" data-scroll-target="#identifying-missing-structure">Identifying missing structure</a></li>
+  </ul></li>
+  <li><a href="#loss-reserve-1" id="toc-loss-reserve-1" class="nav-link" data-scroll-target="#loss-reserve-1">Loss reserve</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
+  <li><a href="#session-information" id="toc-session-information" class="nav-link" data-scroll-target="#session-information">Session information</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+<section id="april-2023-update" class="level2">
+<h2 class="anchored" data-anchor-id="april-2023-update">April 2023 update</h2>
+<p>The article below is my original article working through fitting a GLM to aggregate triangular data using the methods and data from the CAS Monograph <a href="https://www.casact.org/monograph/cas-monograph-no-3">Stochastic Loss Reserving using Generalized Linear Models</a>.</p>
+<p>Since then some or all of the article has re-published with some changes at:</p>
+<ul>
+<li><a href="https://institute-and-faculty-of-actuaries.github.io/mlr-blog/post/foundations/r-glms/">Reserving with GLMs on the MLRWP blog</a></li>
+<li><a href="https://institute-and-faculty-of-actuaries.github.io/mlr-blog/post/foundations/python-glms/">Reserving with GLMs in Python on the MLRWP blog</a></li>
+</ul>
+</section>
+<section id="introduction" class="level2">
+<h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
+<p>This post provides a worked example in R of fitting a GLM to some non-life claims reserving data. The example and data are drawn from the CAS Monograph <a href="../../publication/2016_monograph">Stochastic Loss Reserving using Generalized Linear Models</a>. Here we follow through the application of the cross-classified model from that monograph to the data (Chapter 3), and follow through with the additional work to firstly simplify the model and secondly to improve the model fit through the use of some interaction terms (Chapter 7).</p>
+<ul>
+<li>The data used in this article is available <a href="./_glms_meyersshi.csv">here</a></li>
+<li>You can download this notebook as a quarto file to run the code yourself from <a href="./_traditional_style_reserving_glms.qmd">here</a></li>
+</ul>
+</section>
+<section id="setup" class="level2">
+<h2 class="anchored" data-anchor-id="setup">Setup</h2>
+<p>Before we begin, we first set up the R session by loading in the various packages that we need.</p>
+<ul>
+<li><a href="https://cran.rstudio.com/web/packages/here/index.html">here</a>: I first heard about here from reading <a href="https://github.com/jennybc/here_here">Jenny Bryan’s</a> article on it and have been a fan of <code>here</code> and the R project structure ever since. It really helps with portability of code.
+<ul>
+<li>Basically it allows you to use relative rather than absolute file paths.</li>
+<li>If you want to run this notebook and don’t want to use <code>here</code> then all you need to do is put an appropriate pathname in for loading in the data from a CSV file. Location is not used anywhere else.</li>
+</ul></li>
+<li><a href="https://github.com/Rdatatable/data.table">data.table</a> I really like <code>data.table</code> - its power, speed and terseness. At some point though I may replace the <code>data.table</code> code with base R to reduce dependencies. For now though, there isn’t a huge amount of <code>data.table</code> code.
+<ul>
+<li>Even if you don’t like <code>data.table</code> syntax, the <code>fread</code> and <code>fwrite</code> functions can be very useful for reading and writing CSV files.</li>
+</ul></li>
+<li><a href="https://ggplot2.tidyverse.org/">ggplot2</a>: create nice graphs easily
+<ul>
+<li><a href="https://cran.r-project.org/web/packages/viridis/vignettes/intro-to-viridis.html">viridis</a> nice colour palettes that are tested for common forms of colour-blindness</li>
+<li><a href="https://cran.r-project.org/web/packages/cowplot/index.html">cowplot</a> - an easy way of grouping graphs into a single figure</li>
+<li>[patchwork]https://cran.r-project.org/web/packages/patchwork/index.html) - an easy way of grouping graphs into a single figure</li>
+</ul></li>
+<li><a href="https://cran.r-project.org/web/packages/knitr/index.html">knitr</a> The notebook uses <code>kable</code> from the <code>knitr</code> package. If you’re using RStudio to run this code in notebook format, then you should already have it. Otherwise you can install it, or you can simply replace all the <code>kable</code> commands with print statements.</li>
+</ul>
+<p>If you don’t have any of these packages you will need to install them via <code>install.packages</code> or, if using RStudio, via the Install buttom in the packages pane.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(here)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(data.table)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(viridis)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(patchwork)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># I have elected not to attach knitr, so we need to use knitr::kable() below</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">options</span>(<span class="at">scipen =</span> <span class="dv">99</span>)   <span class="co"># get rid of scientific notation</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="co"># use this theme in all plots</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>ggplot2<span class="sc">::</span><span class="fu">theme_set</span>(<span class="fu">theme_classic</span>())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="data" class="level2">
+<h2 class="anchored" data-anchor-id="data">Data</h2>
+<p>The data are presented in Section 1.3 of the monograph. Ultimately the data were sourced from the Meyers and Shi (2011) database, and are the workers compensation triangle of the New Jersey Manufacturers Group.</p>
+<p>For ease of use, I have created a CSV file with the data which is loaded in this code chunk. As noted above I use relative path names with the <code>here</code> package. If you don’t want to have a setup that works with <code>here</code>, just ensure the full pathname to the file is included in the <code>fread</code> statement below.</p>
+<p>Once the data is loaded in, have a look at the start of it.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>msdata <span class="ot">&lt;-</span> data.table<span class="sc">::</span><span class="fu">fread</span>(here<span class="sc">::</span><span class="fu">here</span>(<span class="st">"post/2019-11-07-traditional-style-reserving-using-glms/_glms_meyersshi.csv"</span>))</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co"># if needed replace here::here("data/glms_meyershi.csv") with</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="co"># the correct path and filename of where you put the data</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="fu">setDT</span>(msdata)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(msdata[<span class="dv">1</span><span class="sc">:</span><span class="dv">6</span>,])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   acc_year dev_year cumulative incremental
+1:        1        1      41821       41821
+2:        1        2      76550       34729
+3:        1        3      96697       20147
+4:        1        4     112662       15965
+5:        1        5     123947       11285
+6:        1        6     129871        5924</code></pre>
+</div>
+</div>
+<p>So we have four columns:</p>
+<ul>
+<li><p>acc_year: accident year, numbered from 1 to 10</p></li>
+<li><p>dev_year: development year, also numbered from 1 to 10</p></li>
+<li><p>cumulative: cumulative payments to date</p></li>
+<li><p>incremental: incremental payments for that accident year, development year combination.</p></li>
+</ul>
+<p>Let’s look at the data visually.</p>
+<p>First we plot the cumulative amounts in each accident year</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data=</span>msdata, <span class="fu">aes</span>(<span class="at">x=</span>dev_year, <span class="at">y=</span>cumulative, <span class="at">colour=</span><span class="fu">as.factor</span>(acc_year))) <span class="sc">+</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_line</span>(<span class="at">size=</span><span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_color_viridis_d</span>(<span class="at">begin=</span><span class="fl">0.9</span>, <span class="at">end=</span><span class="dv">0</span>) <span class="sc">+</span> </span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggtitle</span>(<span class="st">"Cumulative amounts by development year"</span>) <span class="sc">+</span> </span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"right"</span>, <span class="at">legend.title=</span><span class="fu">element_blank</span>(), <span class="at">legend.text=</span><span class="fu">element_text</span>(<span class="at">size=</span><span class="dv">8</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
+ℹ Please use `linewidth` instead.</code></pre>
+</div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid" width="768"></p>
+</div>
+</div>
+<p>Now look at the incremental amounts</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data=</span>msdata, <span class="fu">aes</span>(<span class="at">x=</span>dev_year, <span class="at">y=</span>incremental, <span class="at">colour=</span><span class="fu">as.factor</span>(acc_year))) <span class="sc">+</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_line</span>(<span class="at">size=</span><span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_color_viridis_d</span>(<span class="at">begin=</span><span class="fl">0.9</span>, <span class="at">end=</span><span class="dv">0</span>) <span class="sc">+</span> </span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggtitle</span>(<span class="st">"Incremental amounts by development year"</span>) <span class="sc">+</span> </span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"right"</span>, <span class="at">legend.title=</span><span class="fu">element_blank</span>(), <span class="at">legend.text=</span><span class="fu">element_text</span>(<span class="at">size=</span><span class="dv">8</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid" width="768"></p>
+</div>
+</div>
+<p>The data look quite well behaved - each year seems to have a similar development pattern.</p>
+</section>
+<section id="modelling" class="level2">
+<h2 class="anchored" data-anchor-id="modelling">Modelling</h2>
+<section id="initial-model" class="level3">
+<h3 class="anchored" data-anchor-id="initial-model">Initial model</h3>
+<p>The first model applied here is the Over-dispersed Poisson (ODP) cross classified (cc) model (Sections 3.3.2 and 3.3.3 of the monograph). This model has been shown to give the same results as the chain ladder algorithm.</p>
+<p>To apply the model, we will use the <code>glm</code> function from the base R <code>stats</code> package. The cross-classified model requires separate levels for each of accident and development year so we first make a factor version of these variates.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>msdata[, acc_year_factor <span class="sc">:</span><span class="er">=</span> <span class="fu">as.factor</span>(acc_year)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>       ][, dev_year_factor <span class="sc">:</span><span class="er">=</span> <span class="fu">as.factor</span>(dev_year)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>         ][, cal_year <span class="sc">:</span><span class="er">=</span> acc_year <span class="sc">+</span> dev_year <span class="sc">-</span> <span class="dv">1</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Now we fit the model and look at the results via <code>summary</code>.</p>
+<ul>
+<li>The family is the <em>quasipoisson</em> - this is how we fit an ODP model with <code>glm</code>.</li>
+<li>The link is log</li>
+<li>The formula is simply “incremental ~ 0 + acc_year_factor + dev_year_factor”
+<ul>
+<li>The 0 tells <code>glm</code> to fit a model without an intercept</li>
+<li>We choose to do that here because then we can more easily compare the results to those in the monograph.</li>
+</ul></li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>glm_fit1 <span class="ot">&lt;-</span> <span class="fu">glm</span>(<span class="at">data =</span> msdata, </span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    <span class="at">family =</span> <span class="fu">quasipoisson</span>(<span class="at">link =</span> <span class="st">"log"</span>),</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">formula =</span> <span class="st">"incremental ~ 0 + acc_year_factor + dev_year_factor"</span>)</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(glm_fit1)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+glm(formula = "incremental ~ 0 + acc_year_factor + dev_year_factor", 
+    family = quasipoisson(link = "log"), data = msdata)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-21.493   -5.534    0.000    5.136   21.059  
+
+Coefficients:
+                  Estimate Std. Error t value             Pr(&gt;|t|)    
+acc_year_factor1  10.65676    0.03164 336.794 &lt; 0.0000000000000002 ***
+acc_year_factor2  10.79533    0.02994 360.507 &lt; 0.0000000000000002 ***
+acc_year_factor3  10.89919    0.02887 377.465 &lt; 0.0000000000000002 ***
+acc_year_factor4  10.98904    0.02808 391.326 &lt; 0.0000000000000002 ***
+acc_year_factor5  11.03883    0.02783 396.654 &lt; 0.0000000000000002 ***
+acc_year_factor6  11.01590    0.02855 385.867 &lt; 0.0000000000000002 ***
+acc_year_factor7  11.00808    0.02945 373.734 &lt; 0.0000000000000002 ***
+acc_year_factor8  10.89050    0.03266 333.463 &lt; 0.0000000000000002 ***
+acc_year_factor9  10.83613    0.03669 295.348 &lt; 0.0000000000000002 ***
+acc_year_factor10 10.69108    0.05104 209.454 &lt; 0.0000000000000002 ***
+dev_year_factor2  -0.20466    0.02276  -8.993  0.00000000009767316 ***
+dev_year_factor3  -0.74741    0.02819 -26.512 &lt; 0.0000000000000002 ***
+dev_year_factor4  -1.01667    0.03284 -30.954 &lt; 0.0000000000000002 ***
+dev_year_factor5  -1.45160    0.04214 -34.446 &lt; 0.0000000000000002 ***
+dev_year_factor6  -1.83254    0.05471 -33.495 &lt; 0.0000000000000002 ***
+dev_year_factor7  -2.14026    0.07150 -29.933 &lt; 0.0000000000000002 ***
+dev_year_factor8  -2.34827    0.09312 -25.218 &lt; 0.0000000000000002 ***
+dev_year_factor9  -2.51317    0.12673 -19.831 &lt; 0.0000000000000002 ***
+dev_year_factor10 -2.66449    0.19930 -13.369  0.00000000000000158 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+(Dispersion parameter for quasipoisson family taken to be 114.5364)
+
+    Null deviance: 27479374.2  on 55  degrees of freedom
+Residual deviance:     4128.1  on 36  degrees of freedom
+AIC: NA
+
+Number of Fisher Scoring iterations: 3</code></pre>
+</div>
+</div>
+<p>We now extract the coefficient table in a more convenient way and append it onto the <code>glm_fit1</code> object for later use.</p>
+<p>We will also print the table again in a nicer form to make it easier to compare to the first 3 columns of Table 3-5 of the monograph.</p>
+<ul>
+<li>If you do this, you should see that the results match.</li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># save the data for later use</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>glm_fit1<span class="sc">$</span>coeff_table <span class="ot">&lt;-</span> <span class="fu">data.table</span>(<span class="at">parameter =</span> <span class="fu">names</span>(glm_fit1<span class="sc">$</span>coefficients), </span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>                                   <span class="at">coeff_glm_fit1 =</span> glm_fit1<span class="sc">$</span>coefficients)</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="co"># print out the table so we can compare against Table 3-5.</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>glm_fit1<span class="sc">$</span>coeff_table <span class="sc">|&gt;</span> </span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>    knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">digits=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">3</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<table class="table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">parameter</th>
+<th style="text-align: right;">coeff_glm_fit1</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">acc_year_factor1</td>
+<td style="text-align: right;">10.657</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">acc_year_factor2</td>
+<td style="text-align: right;">10.795</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">acc_year_factor3</td>
+<td style="text-align: right;">10.899</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">acc_year_factor4</td>
+<td style="text-align: right;">10.989</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">acc_year_factor5</td>
+<td style="text-align: right;">11.039</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">acc_year_factor6</td>
+<td style="text-align: right;">11.016</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">acc_year_factor7</td>
+<td style="text-align: right;">11.008</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">acc_year_factor8</td>
+<td style="text-align: right;">10.891</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">acc_year_factor9</td>
+<td style="text-align: right;">10.836</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">acc_year_factor10</td>
+<td style="text-align: right;">10.691</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">dev_year_factor2</td>
+<td style="text-align: right;">-0.205</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">dev_year_factor3</td>
+<td style="text-align: right;">-0.747</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">dev_year_factor4</td>
+<td style="text-align: right;">-1.017</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">dev_year_factor5</td>
+<td style="text-align: right;">-1.452</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">dev_year_factor6</td>
+<td style="text-align: right;">-1.833</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">dev_year_factor7</td>
+<td style="text-align: right;">-2.140</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">dev_year_factor8</td>
+<td style="text-align: right;">-2.348</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">dev_year_factor9</td>
+<td style="text-align: right;">-2.513</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">dev_year_factor10</td>
+<td style="text-align: right;">-2.664</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="loss-reserve" class="level3">
+<h3 class="anchored" data-anchor-id="loss-reserve">Loss reserve</h3>
+<ul>
+<li>We will calculate the loss reserve for this model</li>
+<li>This should give the same answers as the chain ladder algorithm</li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># first make the lower triangle data set</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>ay <span class="ot">&lt;-</span> <span class="cn">NULL</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>dy <span class="ot">&lt;-</span> <span class="cn">NULL</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">2</span><span class="sc">:</span><span class="dv">10</span>){</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>    ay <span class="ot">&lt;-</span> <span class="fu">c</span>(ay, <span class="fu">rep</span>(i, <span class="at">times=</span>(i<span class="dv">-1</span>)))</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>    dy <span class="ot">&lt;-</span> <span class="fu">c</span>(dy, (<span class="dv">10</span><span class="sc">-</span>i<span class="sc">+</span><span class="dv">2</span>)<span class="sc">:</span><span class="dv">10</span>)</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>futdata <span class="ot">&lt;-</span> <span class="fu">data.table</span>(<span class="at">acc_year =</span> ay, <span class="at">dev_year =</span> dy)</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a><span class="co"># make factors</span></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>futdata[, cal_year <span class="sc">:</span><span class="er">=</span> acc_year <span class="sc">+</span> dev_year</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>        ][, acc_year_factor <span class="sc">:</span><span class="er">=</span> <span class="fu">as.factor</span>(acc_year)</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>          ][, dev_year_factor <span class="sc">:</span><span class="er">=</span> <span class="fu">as.factor</span>(dev_year)]</span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a><span class="co"># make the prediction and sum by acc_year</span></span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">predict</span>(glm_fit1, <span class="at">newdata =</span> futdata, <span class="at">type=</span><span class="st">"response"</span>)</span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>futdata[, incremental <span class="sc">:</span><span class="er">=</span> x]</span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>ocl_year <span class="ot">&lt;-</span> futdata[,  <span class="fu">lapply</span>(.SD, sum), .SDcols<span class="ot">=</span><span class="fu">c</span>(<span class="st">"incremental"</span>), by<span class="ot">=</span><span class="st">"acc_year"</span>]</span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a>ocl_year <span class="sc">|&gt;</span> </span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a>    knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">digits=</span><span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">0</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<table class="table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: right;">acc_year</th>
+<th style="text-align: right;">incremental</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">3398</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">8155</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">14579</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">22645</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">31865</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">45753</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">60093</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">80983</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">105874</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<ul>
+<li>As expected, this matches the results in Table 3-2 of the monograph.</li>
+</ul>
+</section>
+<section id="model-diagnostics" class="level3">
+<h3 class="anchored" data-anchor-id="model-diagnostics">Model diagnostics</h3>
+<p>It’s always important to check that a model fits the data well, so here we look at the following:</p>
+<ul>
+<li>Residual Scatterplots
+<ul>
+<li>by linear predictor</li>
+<li>by accident, development and calendar years</li>
+</ul></li>
+<li>Heat map of actual vs fitted
+<ul>
+<li>In this we get the actual/fitted ratio in each (acc, dev) cell [subject to lower and upper bounds of (0.5, 2)] and then plot the colour-coded triangle of the actual/fitted values</li>
+<li>heat maps are helpful to check for model fit and may help to identify missing interactions.</li>
+</ul></li>
+</ul>
+<p><strong>Note on residuals with <code>glm</code></strong></p>
+<ul>
+<li>The residuals in a glm object accessed with <code>$residuals</code> are residuals used in the model fitting algorithm.</li>
+<li>For diagnostic purposes, the standardised deviance residuals are usually preferable to work with.
+<ul>
+<li>These are the signed square roots of the contribution of the i<em>th</em> observation to the deviance, divided by hat matrix values.</li>
+<li>The <code>stats::rstandard()</code> function may be used with glm objects to extract the standardised deviance residuals.</li>
+</ul></li>
+</ul>
+<p><br><br></p>
+<p><strong>Generating the diagnostics</strong></p>
+<ul>
+<li>First we prepare the data by adding the fitted values and residuals.
+<ul>
+<li>Because this model has a lot of parameters, there are two observations where the fitted is exactly equal to the actual – (acc_year=1, dev_year=10) and (acc_year=10, dev_year=0). This is because these observations have a unique parameter.</li>
+<li>The deviance calculations below return NaN (not a number) for these points, but the residual should really be 0 so this adjustment is made manually.</li>
+</ul></li>
+<li>Also add actual/fitted ratios and the log of these (restricted to the range [log(0.5), log(2)]) - these will be used for a heatmap later.
+<ul>
+<li>The restricted range is used to generate easier to read shadings in the heat-map, while the conversion to log means that the shading scales will be similar intensity for <span class="math inline">\(x\)</span>% and <span class="math inline">\(1/x\)</span> %</li>
+</ul></li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>msdata[, residuals1 <span class="sc">:</span><span class="er">=</span> <span class="fu">rstandard</span>(glm_fit1)</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>       ][, fitted1 <span class="sc">:</span><span class="er">=</span> glm_fit1<span class="sc">$</span>fitted.values</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>         ][, linear_predictor1 <span class="sc">:</span><span class="er">=</span> <span class="fu">log</span>(fitted1)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>           ][, AvsF1 <span class="sc">:</span><span class="er">=</span> incremental <span class="sc">/</span> fitted1</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>             ][, AvsF_restricted1 <span class="sc">:</span><span class="er">=</span> <span class="fu">log</span>(<span class="fu">pmax</span>(<span class="fl">0.5</span>, <span class="fu">pmin</span>(<span class="dv">2</span>,AvsF1)))]</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a><span class="co"># check for NaN residuals</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>msdata[<span class="fu">is.nan</span>(residuals1),]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   acc_year dev_year cumulative incremental acc_year_factor dev_year_factor
+1:        1       10     144781        2958               1              10
+2:       10        1      43962       43962              10               1
+   cal_year residuals1 fitted1 linear_predictor1 AvsF1
+1:       10        NaN    2958          7.992269     1
+2:       10        NaN   43962         10.691081     1
+            AvsF_restricted1
+1: -0.0000000000000019984014
+2:  0.0000000000000008881784</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># these occur where we expect them so so replace with 0</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>msdata[<span class="fu">is.nan</span>(residuals1), residuals1 <span class="sc">:</span><span class="er">=</span> <span class="dv">0</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Look at the first 10 rows of msdata</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(msdata, <span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>    acc_year dev_year cumulative incremental acc_year_factor dev_year_factor
+ 1:        1        1      41821       41821               1               1
+ 2:        1        2      76550       34729               1               2
+ 3:        1        3      96697       20147               1               3
+ 4:        1        4     112662       15965               1               4
+ 5:        1        5     123947       11285               1               5
+ 6:        1        6     129871        5924               1               6
+ 7:        1        7     134646        4775               1               7
+ 8:        1        8     138388        3742               1               8
+ 9:        1        9     141823        3435               1               9
+10:        1       10     144781        2958               1              10
+    cal_year  residuals1   fitted1 linear_predictor1     AvsF1
+ 1:        1 -0.37704981 42478.725         10.656759 0.9845164
+ 2:        2  0.06821815 34616.808         10.452095 1.0032410
+ 3:        3  0.02211088 20117.514          9.909346 1.0014657
+ 4:        4  0.50192703 15368.757          9.640092 1.0387958
+ 5:        5  1.36344235  9948.355          9.205163 1.1343584
+ 6:        6 -1.13119533  6796.876          8.824218 0.8715769
+ 7:        7 -0.33754581  4996.553          8.516503 0.9556589
+ 8:        8 -0.56680264  4058.159          8.308485 0.9220929
+ 9:        9 -0.01379476  3441.253          8.143591 0.9981829
+10:       10  0.00000000  2958.000          7.992269 1.0000000
+            AvsF_restricted1
+ 1: -0.015604749951508145936
+ 2:  0.003235741327323749146
+ 3:  0.001464610789021573859
+ 4:  0.038062125103388820546
+ 5:  0.126067171138098593763
+ 6: -0.137451186377785167236
+ 7: -0.045354245283910396558
+ 8: -0.081109303248732236846
+ 9: -0.001818723883641001036
+10: -0.000000000000001998401</code></pre>
+</div>
+</div>
+<p>Now let’s look at the residual scatterplots - here I use the <code>cowplot</code> package to combine all 4 graphs into one plot.</p>
+<p>In the linear predictor scatterplot, the points are colour coded so that the lighter points belong to the earlier development years, and the darker points belong to the later ones.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>p1 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>msdata, <span class="fu">aes</span>(<span class="at">x=</span>linear_predictor1, <span class="at">y=</span>residuals1, <span class="at">colour=</span>dev_year)) <span class="sc">+</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="at">size=</span><span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_colour_viridis</span>(<span class="at">begin=</span><span class="fl">0.9</span>, <span class="at">end=</span><span class="dv">0</span>) <span class="sc">+</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>) <span class="sc">+</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggtitle</span>(<span class="st">"Linear predictor"</span>)</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>p2 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>msdata, <span class="fu">aes</span>(<span class="at">x=</span>acc_year, <span class="at">y=</span>residuals1)) <span class="sc">+</span></span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="at">size=</span><span class="dv">2</span>, <span class="at">colour=</span><span class="st">"#2d708eff"</span>) <span class="sc">+</span></span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggtitle</span>(<span class="st">"Accident year"</span>)</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>p3 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>msdata, <span class="fu">aes</span>(<span class="at">x=</span>dev_year, <span class="at">y=</span>residuals1)) <span class="sc">+</span></span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="at">size=</span><span class="dv">2</span>, <span class="at">colour=</span><span class="st">"#2d708eff"</span>) <span class="sc">+</span></span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggtitle</span>(<span class="st">"Development year"</span>)</span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a>p4 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>msdata, <span class="fu">aes</span>(<span class="at">x=</span>cal_year, <span class="at">y=</span>residuals1)) <span class="sc">+</span></span>
+<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="at">size=</span><span class="dv">2</span>, <span class="at">colour=</span><span class="st">"#2d708eff"</span>) <span class="sc">+</span></span>
+<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggtitle</span>(<span class="st">"Calendar year"</span>)</span>
+<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a><span class="co"># combine plots with patchwork</span></span>
+<span id="cb17-21"><a href="#cb17-21" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> (p1 <span class="sc">+</span> p2) <span class="sc">/</span> (p3 <span class="sc">+</span> p4)</span>
+<span id="cb17-22"><a href="#cb17-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-23"><a href="#cb17-23" aria-hidden="true" tabindex="-1"></a>p</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-10-1.png" class="img-fluid" width="864"></p>
+</div>
+</div>
+<p>Now construct and draw the heat map. Note that the colours are:</p>
+<ul>
+<li>blue (A/F = 50%)</li>
+<li>white (A/F = 100%)</li>
+<li>red (A/F = 200%)</li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># heatmap code</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="co"># to get the correct shading I've plotted the log of the restricted A/F values</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>p_hm <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>msdata, <span class="fu">aes</span>(<span class="at">x=</span>dev_year, <span class="at">y=</span>acc_year)) <span class="sc">+</span> </span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_tile</span>(<span class="fu">aes</span>(<span class="at">fill =</span> AvsF_restricted1))<span class="sc">+</span><span class="fu">scale_y_reverse</span>()<span class="sc">+</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_fill_gradient2</span>(<span class="at">name=</span><span class="st">"AvF_min"</span>, <span class="at">low=</span><span class="st">"royalblue"</span>, <span class="at">mid=</span><span class="st">"white"</span>, <span class="at">high=</span><span class="st">"red"</span>, <span class="at">midpoint=</span><span class="dv">0</span>, <span class="at">space=</span><span class="st">"Lab"</span>, <span class="at">na.value=</span><span class="st">"grey50"</span>, <span class="at">guide=</span><span class="st">"colourbar"</span>)<span class="sc">+</span></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">labs</span>(<span class="at">x=</span><span class="st">"Development year"</span>, <span class="at">y=</span><span class="st">"Accident year"</span>)<span class="sc">+</span></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>)<span class="sc">+</span></span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">axis.title.x =</span> <span class="fu">element_text</span>(<span class="at">size=</span><span class="dv">8</span>), <span class="at">axis.text.x  =</span> <span class="fu">element_text</span>(<span class="at">size=</span><span class="dv">7</span>))<span class="sc">+</span></span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">axis.title.y =</span> <span class="fu">element_text</span>(<span class="at">size=</span><span class="dv">8</span>), <span class="at">axis.text.y  =</span> <span class="fu">element_text</span>(<span class="at">size=</span><span class="dv">7</span>))<span class="sc">+</span></span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">panel.background =</span> <span class="fu">element_rect</span>(<span class="at">fill =</span> <span class="st">"grey"</span>, <span class="at">colour =</span> <span class="st">"grey"</span>, <span class="at">size =</span> <span class="dv">2</span>, <span class="at">linetype =</span> <span class="st">"solid"</span>),</span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>          <span class="at">panel.grid =</span> <span class="fu">element_line</span>(<span class="at">colour=</span><span class="st">"grey"</span>)) <span class="sc">+</span> </span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>    <span class="cn">NULL</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: The `size` argument of `element_rect()` is deprecated as of ggplot2 3.4.0.
+ℹ Please use the `linewidth` argument instead.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(p_hm)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+</section>
+<section id="refining-the-model" class="level2">
+<h2 class="anchored" data-anchor-id="refining-the-model">Refining the model</h2>
+<p>We could stop here - and just use the results from this model, which match those produced by the chain ladder. The diagnostics suggest that the model fits quite well. However can we:</p>
+<ul>
+<li>identify simplifications to the model to make it more parsinomious?</li>
+<li>identify any areas of poorer fit than may suggest missing model terms including interactions?</li>
+</ul>
+<section id="simplifying-the-model" class="level3">
+<h3 class="anchored" data-anchor-id="simplifying-the-model">Simplifying the model</h3>
+<p>First we consider if we can use a parametric shape for the accident and development year parameters.</p>
+</section>
+<section id="accident-year" class="level3">
+<h3 class="anchored" data-anchor-id="accident-year">Accident year</h3>
+<p>First plot the accident year parameters.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co"># extract the data</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>dt_acc_year <span class="ot">&lt;-</span> glm_fit1<span class="sc">$</span>coeff_table[<span class="fu">grepl</span>(<span class="st">"acc_year"</span>, parameter),  </span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>                                    ][, acc_year <span class="sc">:</span><span class="er">=</span> <span class="fu">as.integer</span>(<span class="fu">gsub</span>(<span class="st">"acc_year_factor"</span>, <span class="st">""</span>, parameter))]</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a><span class="co"># plot</span></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data=</span>dt_acc_year, <span class="fu">aes</span>(<span class="at">x=</span>acc_year, <span class="at">y=</span>coeff_glm_fit1)) <span class="sc">+</span></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_line</span>(<span class="at">size=</span><span class="dv">2</span>, <span class="at">colour=</span><span class="st">"#440154ff"</span>) <span class="sc">+</span></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="at">size=</span><span class="dv">4</span>, <span class="at">colour=</span><span class="st">"#440154ff"</span>) <span class="sc">+</span> </span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggtitle</span>(<span class="st">"Accident year parameters"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-12-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<ul>
+<li>Note that their shape closely resembles that of a parabola.</li>
+<li>This suggests that we can replace the 10 accident year parameters by
+<ul>
+<li>the overall intercept</li>
+<li>an acc_year term</li>
+<li>an acc_year squarted term</li>
+</ul></li>
+<li>So refit the model on this basis.
+<ul>
+<li>Drop the 0 from the glm_fit1 formula to allow the model to have an intecept</li>
+<li>Replace the acc_year_factor term with the parabola terms.</li>
+</ul></li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co"># add an x and x^2 term</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>msdata[, acc_year_2 <span class="sc">:</span><span class="er">=</span> acc_year<span class="sc">^</span><span class="dv">2</span>]</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>glm_fit2 <span class="ot">&lt;-</span> <span class="fu">glm</span>(<span class="at">data =</span> msdata, </span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">family =</span> <span class="fu">quasipoisson</span>(<span class="at">link =</span> <span class="st">"log"</span>),</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">formula =</span> <span class="st">"incremental ~ acc_year + acc_year_2 + dev_year_factor"</span>)</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(glm_fit2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+glm(formula = "incremental ~ acc_year + acc_year_2 + dev_year_factor", 
+    family = quasipoisson(link = "log"), data = msdata)
+
+Deviance Residuals: 
+     Min        1Q    Median        3Q       Max  
+-28.5517   -5.1747    0.2691    4.5827   24.5421  
+
+Coefficients:
+                   Estimate Std. Error t value             Pr(&gt;|t|)    
+(Intercept)       10.470978   0.034414 304.264 &lt; 0.0000000000000002 ***
+acc_year           0.200075   0.014219  14.071 &lt; 0.0000000000000002 ***
+acc_year_2        -0.017907   0.001356 -13.210 &lt; 0.0000000000000002 ***
+dev_year_factor2  -0.205555   0.021276  -9.661     0.00000000000243 ***
+dev_year_factor3  -0.750108   0.026492 -28.314 &lt; 0.0000000000000002 ***
+dev_year_factor4  -1.014806   0.030982 -32.755 &lt; 0.0000000000000002 ***
+dev_year_factor5  -1.451958   0.039797 -36.484 &lt; 0.0000000000000002 ***
+dev_year_factor6  -1.830488   0.051662 -35.432 &lt; 0.0000000000000002 ***
+dev_year_factor7  -2.142154   0.067504 -31.734 &lt; 0.0000000000000002 ***
+dev_year_factor8  -2.352674   0.087924 -26.758 &lt; 0.0000000000000002 ***
+dev_year_factor9  -2.513722   0.119637 -21.011 &lt; 0.0000000000000002 ***
+dev_year_factor10 -2.660878   0.187820 -14.167 &lt; 0.0000000000000002 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+(Dispersion parameter for quasipoisson family taken to be 102.5776)
+
+    Null deviance: 750824  on 54  degrees of freedom
+Residual deviance:   4427  on 43  degrees of freedom
+AIC: NA
+
+Number of Fisher Scoring iterations: 3</code></pre>
+</div>
+</div>
+<p>We see in the coefficient table part of the summary that the two acc_year terms are highly significant.</p>
+<p><br></p>
+<p>Now extract the coefficients and compare the previous and current fits.</p>
+<ul>
+<li>Remember that the intercept must be included in these calculations.</li>
+<li>Again, save the coefficient table in this extracted form with the glm_fit2 object for later use.</li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co"># extract the coefficient table</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>glm_fit2<span class="sc">$</span>coeff_table <span class="ot">&lt;-</span> <span class="fu">data.table</span>(<span class="at">parameter =</span> <span class="fu">names</span>(glm_fit2<span class="sc">$</span>coefficients), <span class="at">coeff_glm_fit2 =</span> glm_fit2<span class="sc">$</span>coefficients)</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(glm_fit2<span class="sc">$</span>coeff_table)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>            parameter coeff_glm_fit2
+ 1:       (Intercept)    10.47097818
+ 2:          acc_year     0.20007497
+ 3:        acc_year_2    -0.01790686
+ 4:  dev_year_factor2    -0.20555514
+ 5:  dev_year_factor3    -0.75010823
+ 6:  dev_year_factor4    -1.01480620
+ 7:  dev_year_factor5    -1.45195754
+ 8:  dev_year_factor6    -1.83048769
+ 9:  dev_year_factor7    -2.14215388
+10:  dev_year_factor8    -2.35267361
+11:  dev_year_factor9    -2.51372160
+12: dev_year_factor10    -2.66087765</code></pre>
+</div>
+</div>
+<p>Now compare the past and current parameter estimates for accident year.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co"># pull out the acc year coefficinents only</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>dt_acc_year[, coeff_glm_fit2 <span class="sc">:</span><span class="er">=</span> glm_fit2<span class="sc">$</span>coeff_table[parameter <span class="sc">==</span> <span class="st">"acc_year"</span>, coeff_glm_fit2]<span class="sc">*</span>acc_year <span class="sc">+</span> </span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>                glm_fit2<span class="sc">$</span>coeff_table[parameter <span class="sc">==</span> <span class="st">"acc_year_2"</span>, coeff_glm_fit2]<span class="sc">*</span>acc_year<span class="sc">^</span><span class="dv">2</span> <span class="sc">+</span> </span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>                glm_fit2<span class="sc">$</span>coeff_table[parameter <span class="sc">==</span> <span class="st">"(Intercept)"</span>, coeff_glm_fit2]]</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a><span class="co"># make long for ggplot</span></span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>dt_acc_year_plot <span class="ot">&lt;-</span> <span class="fu">melt</span>(dt_acc_year, <span class="at">id.vars =</span> <span class="st">"acc_year"</span>, <span class="at">measure.vars =</span> <span class="fu">c</span>(<span class="st">"coeff_glm_fit1"</span>, <span class="st">"coeff_glm_fit2"</span>), <span class="at">variable.name=</span><span class="st">"model"</span>, <span class="at">value =</span> <span class="st">"estimate"</span>)</span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a><span class="co"># remove the coeff_ from the model names</span></span>
+<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a>dt_acc_year_plot[, model <span class="sc">:</span><span class="er">=</span> <span class="fu">gsub</span>(<span class="st">"coeff_"</span>, <span class="st">""</span>, model, <span class="at">fixed=</span><span class="cn">TRUE</span>)]</span>
+<span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-12"><a href="#cb26-12" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data=</span>dt_acc_year_plot, <span class="fu">aes</span>(<span class="at">x=</span>acc_year, <span class="at">y=</span>estimate, <span class="at">colour=</span>model)) <span class="sc">+</span></span>
+<span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_line</span>(<span class="at">size=</span><span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb26-14"><a href="#cb26-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="at">size=</span><span class="dv">4</span>) <span class="sc">+</span></span>
+<span id="cb26-15"><a href="#cb26-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_colour_viridis_d</span>(<span class="at">begin=</span><span class="dv">0</span>, <span class="at">end=</span><span class="fl">0.5</span>) <span class="sc">+</span> </span>
+<span id="cb26-16"><a href="#cb26-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggtitle</span>(<span class="st">"Accident year parameters"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-15-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<ul>
+<li>This looks very good - the fit is very similar, but we have 7 fewer parameters.</li>
+</ul>
+</section>
+<section id="development-year" class="level3">
+<h3 class="anchored" data-anchor-id="development-year">Development year</h3>
+<ul>
+<li>Now we do the same thing for development year</li>
+<li>Note that the glm_fit2 model (and the glm_fit1 model too) do not have a parameter for dev_year = 1 as this is the base level.
+<ul>
+<li>This means that the parameter is really 0, so we must remember to include this.</li>
+</ul></li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co"># extract the data</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>dt_dev_year <span class="ot">&lt;-</span> glm_fit2<span class="sc">$</span>coeff_table[<span class="fu">grepl</span>(<span class="st">"dev_year"</span>, parameter),  </span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>                                    ][, dev_year <span class="sc">:</span><span class="er">=</span> <span class="fu">as.integer</span>(<span class="fu">gsub</span>(<span class="st">"dev_year_factor"</span>, <span class="st">""</span>, parameter))][]   <span class="co"># known data.table printing bug</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a><span class="co"># add year 1</span></span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>dt_dev_year <span class="ot">&lt;-</span> <span class="fu">rbind</span>(dt_dev_year, <span class="fu">data.table</span>(<span class="at">parameter=</span><span class="st">"dev_year_factor1"</span>, <span class="at">coeff_glm_fit2=</span><span class="dv">0</span>, <span class="at">dev_year=</span><span class="dv">1</span>))</span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a><span class="fu">setorder</span>(dt_dev_year, dev_year)</span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a><span class="co"># plot</span></span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data=</span>dt_dev_year, <span class="fu">aes</span>(<span class="at">x=</span>dev_year, <span class="at">y=</span>coeff_glm_fit2)) <span class="sc">+</span></span>
+<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_line</span>(<span class="at">size=</span><span class="dv">2</span>, <span class="at">colour=</span><span class="st">"#440154ff"</span>) <span class="sc">+</span></span>
+<span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="at">size=</span><span class="dv">4</span>, <span class="at">colour=</span><span class="st">"#440154ff"</span>) <span class="sc">+</span></span>
+<span id="cb27-14"><a href="#cb27-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggtitle</span>(<span class="st">"Development year parameters"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-16-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<ul>
+<li>Looking at this plot, it appears that a straight line would fit quite well</li>
+<li>This fit would be improved by allowing the straight line to bend (have a knot) at dev_year = 7
+<ul>
+<li>So let’s try this below</li>
+<li>note we actually fit dev_year - 1 rather than dev_year
+<ul>
+<li>this means that the parameter estimate at dev_year = 1 is 0, just as it is in the glm_fit2 model, so it makes the results comparable</li>
+<li>if we fit dev_year, then the parameter estimate at dev_year=1 would be non-zero, so the two fits would be shifted relative to each other and we would need to adjust for that.</li>
+</ul></li>
+</ul></li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co"># add dev-1 and dev-7 terms</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>msdata[, dev_year_m1 <span class="sc">:</span><span class="er">=</span> dev_year <span class="sc">-</span> <span class="dv">1</span>]</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>msdata[, dev_year_ge_7 <span class="sc">:</span><span class="er">=</span> <span class="fu">pmax</span>(dev_year<span class="fl">-7.5</span>, <span class="dv">0</span>)]</span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a><span class="co"># fit the model</span></span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>glm_fit3 <span class="ot">&lt;-</span> <span class="fu">glm</span>(<span class="at">data =</span> msdata, </span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">family =</span> <span class="fu">quasipoisson</span>(<span class="at">link =</span> <span class="st">"log"</span>),</span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">formula =</span> <span class="st">"incremental ~ acc_year + acc_year_2 + dev_year_m1 + dev_year_ge_7"</span>)</span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a><span class="co"># extract and save the coefficient table</span></span>
+<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a>glm_fit3<span class="sc">$</span>coeff_table <span class="ot">&lt;-</span> <span class="fu">data.table</span>(<span class="at">parameter =</span> <span class="fu">names</span>(glm_fit3<span class="sc">$</span>coefficients), <span class="at">coeff_glm_fit3 =</span> glm_fit3<span class="sc">$</span>coefficients)</span>
+<span id="cb28-12"><a href="#cb28-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-13"><a href="#cb28-13" aria-hidden="true" tabindex="-1"></a><span class="co"># display a summary of the model</span></span>
+<span id="cb28-14"><a href="#cb28-14" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(glm_fit3)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+glm(formula = "incremental ~ acc_year + acc_year_2 + dev_year_m1 + dev_year_ge_7", 
+    family = quasipoisson(link = "log"), data = msdata)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-25.301   -9.262   -2.080    5.893   42.841  
+
+Coefficients:
+               Estimate Std. Error t value             Pr(&gt;|t|)    
+(Intercept)   10.509475   0.052096 201.734 &lt; 0.0000000000000002 ***
+acc_year       0.204224   0.021608   9.451     0.00000000000104 ***
+acc_year_2    -0.018295   0.002058  -8.891     0.00000000000719 ***
+dev_year_m1   -0.364073   0.008845 -41.160 &lt; 0.0000000000000002 ***
+dev_year_ge_7  0.238860   0.088426   2.701              0.00941 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+(Dispersion parameter for quasipoisson family taken to be 242.0614)
+
+    Null deviance: 750824  on 54  degrees of freedom
+Residual deviance:  11879  on 50  degrees of freedom
+AIC: NA
+
+Number of Fisher Scoring iterations: 4</code></pre>
+</div>
+</div>
+<ul>
+<li>Assuming the fit is satisfactory, our original model with 19 parmaeters has now been simplified to 5 parameters - much more parsimonious and robust.</li>
+<li>Let’s check the fit by dev_year to see.</li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="co"># get the dev_year fit under the new model and add to the data.table containing the factor level parameters</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>p1 <span class="ot">&lt;-</span> glm_fit3<span class="sc">$</span>coeff_table[parameter <span class="sc">==</span> <span class="st">"dev_year_m1"</span>, coeff_glm_fit3]</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>p2 <span class="ot">&lt;-</span> glm_fit3<span class="sc">$</span>coeff_table[parameter <span class="sc">==</span> <span class="st">"dev_year_ge_7"</span>, coeff_glm_fit3]</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>dt_dev_year[, coeff_glm_fit3 <span class="sc">:</span><span class="er">=</span> p1<span class="sc">*</span>(dev_year<span class="dv">-1</span>) <span class="sc">+</span> p2<span class="sc">*</span><span class="fu">pmax</span>(<span class="dv">0</span>, dev_year<span class="fl">-7.5</span>) ]</span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a><span class="co"># make long for ggplot</span></span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>dt_dev_year_plot <span class="ot">&lt;-</span> <span class="fu">melt</span>(dt_dev_year, <span class="at">id.vars =</span> <span class="st">"dev_year"</span>, <span class="at">measure.vars =</span> <span class="fu">c</span>(<span class="st">"coeff_glm_fit2"</span>, <span class="st">"coeff_glm_fit3"</span>), <span class="at">variable.name=</span><span class="st">"model"</span>, <span class="at">value =</span> <span class="st">"estimate"</span>)</span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a><span class="co"># remove the coeff_ from the model names</span></span>
+<span id="cb30-11"><a href="#cb30-11" aria-hidden="true" tabindex="-1"></a>dt_dev_year_plot[, model <span class="sc">:</span><span class="er">=</span> <span class="fu">gsub</span>(<span class="st">"coeff_"</span>, <span class="st">""</span>, model, <span class="at">fixed=</span><span class="cn">TRUE</span>)]</span>
+<span id="cb30-12"><a href="#cb30-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-13"><a href="#cb30-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-14"><a href="#cb30-14" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data=</span>dt_dev_year_plot, <span class="fu">aes</span>(<span class="at">x=</span>dev_year, <span class="at">y=</span>estimate, <span class="at">colour=</span>model)) <span class="sc">+</span></span>
+<span id="cb30-15"><a href="#cb30-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_line</span>(<span class="at">size=</span><span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb30-16"><a href="#cb30-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="at">size=</span><span class="dv">4</span>) <span class="sc">+</span></span>
+<span id="cb30-17"><a href="#cb30-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_colour_viridis_d</span>(<span class="at">begin=</span><span class="dv">0</span>, <span class="at">end=</span><span class="fl">0.5</span>) <span class="sc">+</span></span>
+<span id="cb30-18"><a href="#cb30-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggtitle</span>(<span class="st">"Accident year parameters"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-18-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<ul>
+<li>This looks good.</li>
+<li>However dev_year = 2 is a bit underfit in the latest model, so we can add something to improve this fit</li>
+<li>So refit and replot.</li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>msdata[, dev_year_eq_2 <span class="sc">:</span><span class="er">=</span> <span class="fu">as.integer</span>(dev_year <span class="sc">==</span> <span class="dv">2</span>)]</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>glm_fit4 <span class="ot">&lt;-</span> <span class="fu">glm</span>(<span class="at">data =</span> msdata, </span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">family =</span> <span class="fu">quasipoisson</span>(<span class="at">link =</span> <span class="st">"log"</span>),</span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">formula =</span> <span class="st">"incremental ~ acc_year + acc_year_2 + dev_year_m1 + dev_year_ge_7 + dev_year_eq_2"</span>)</span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a>glm_fit4<span class="sc">$</span>coeff_table <span class="ot">&lt;-</span> <span class="fu">data.table</span>(<span class="at">parameter =</span> <span class="fu">names</span>(glm_fit4<span class="sc">$</span>coefficients), <span class="at">coeff_glm_fit4 =</span> glm_fit4<span class="sc">$</span>coefficients)</span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-11"><a href="#cb31-11" aria-hidden="true" tabindex="-1"></a>p1 <span class="ot">&lt;-</span> glm_fit4<span class="sc">$</span>coeff_table[parameter <span class="sc">==</span> <span class="st">"dev_year_m1"</span>, coeff_glm_fit4]</span>
+<span id="cb31-12"><a href="#cb31-12" aria-hidden="true" tabindex="-1"></a>p2 <span class="ot">&lt;-</span> glm_fit4<span class="sc">$</span>coeff_table[parameter <span class="sc">==</span> <span class="st">"dev_year_ge_7"</span>, coeff_glm_fit4]</span>
+<span id="cb31-13"><a href="#cb31-13" aria-hidden="true" tabindex="-1"></a>p3 <span class="ot">&lt;-</span> glm_fit4<span class="sc">$</span>coeff_table[parameter <span class="sc">==</span> <span class="st">"dev_year_eq_2"</span>, coeff_glm_fit4]</span>
+<span id="cb31-14"><a href="#cb31-14" aria-hidden="true" tabindex="-1"></a>dt_dev_year[, coeff_glm_fit4 <span class="sc">:</span><span class="er">=</span> p1<span class="sc">*</span>(dev_year<span class="dv">-1</span>) <span class="sc">+</span> p2<span class="sc">*</span><span class="fu">pmax</span>(<span class="dv">0</span>, dev_year<span class="fl">-7.5</span>) <span class="sc">+</span> p3<span class="sc">*</span>(dev_year <span class="sc">==</span> <span class="dv">2</span>) ]</span>
+<span id="cb31-15"><a href="#cb31-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-16"><a href="#cb31-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-17"><a href="#cb31-17" aria-hidden="true" tabindex="-1"></a><span class="co"># make long for ggplot</span></span>
+<span id="cb31-18"><a href="#cb31-18" aria-hidden="true" tabindex="-1"></a>dt_dev_year_plot <span class="ot">&lt;-</span> <span class="fu">melt</span>(dt_dev_year, <span class="at">id.vars =</span> <span class="st">"dev_year"</span>, <span class="at">measure.vars =</span> <span class="fu">c</span>(<span class="st">"coeff_glm_fit2"</span>, <span class="st">"coeff_glm_fit4"</span>), <span class="at">variable.name=</span><span class="st">"model"</span>, <span class="at">value =</span> <span class="st">"estimate"</span>)</span>
+<span id="cb31-19"><a href="#cb31-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-20"><a href="#cb31-20" aria-hidden="true" tabindex="-1"></a><span class="co"># remove the coeff_ from the model names</span></span>
+<span id="cb31-21"><a href="#cb31-21" aria-hidden="true" tabindex="-1"></a>dt_dev_year_plot[, model <span class="sc">:</span><span class="er">=</span> <span class="fu">gsub</span>(<span class="st">"coeff_"</span>, <span class="st">""</span>, model, <span class="at">fixed=</span><span class="cn">TRUE</span>)]</span>
+<span id="cb31-22"><a href="#cb31-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-23"><a href="#cb31-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-24"><a href="#cb31-24" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data=</span>dt_dev_year_plot, <span class="fu">aes</span>(<span class="at">x=</span>dev_year, <span class="at">y=</span>estimate, <span class="at">colour=</span>model)) <span class="sc">+</span></span>
+<span id="cb31-25"><a href="#cb31-25" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_line</span>(<span class="at">size=</span><span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb31-26"><a href="#cb31-26" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="at">size=</span><span class="dv">4</span>) <span class="sc">+</span></span>
+<span id="cb31-27"><a href="#cb31-27" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_colour_viridis_d</span>(<span class="at">begin=</span><span class="dv">0</span>, <span class="at">end=</span><span class="fl">0.5</span>) <span class="sc">+</span></span>
+<span id="cb31-28"><a href="#cb31-28" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggtitle</span>(<span class="st">"Accident year parameters"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-19-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<ul>
+<li>Looks good!</li>
+</ul>
+</section>
+<section id="identifying-missing-structure" class="level3">
+<h3 class="anchored" data-anchor-id="identifying-missing-structure">Identifying missing structure</h3>
+<ul>
+<li>The second part of the model refining process involves checking for missing structure.</li>
+<li>Let’s have a better look at the heat map.</li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>msdata[, residuals4 <span class="sc">:</span><span class="er">=</span> <span class="fu">rstandard</span>(glm_fit4)</span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>       ][, fitted4 <span class="sc">:</span><span class="er">=</span> glm_fit4<span class="sc">$</span>fitted.values</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>         ][, linear_predictor4 <span class="sc">:</span><span class="er">=</span> <span class="fu">log</span>(fitted4)</span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>           ][, AvsF4 <span class="sc">:</span><span class="er">=</span> incremental <span class="sc">/</span> fitted4</span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>             ][, AvsF_restricted4 <span class="sc">:</span><span class="er">=</span> <span class="fu">log</span>(<span class="fu">pmax</span>(<span class="fl">0.5</span>, <span class="fu">pmin</span>(<span class="dv">2</span>,AvsF4)))]</span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a>p_hm <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>msdata, <span class="fu">aes</span>(<span class="at">x=</span>dev_year, <span class="at">y=</span>acc_year)) <span class="sc">+</span> </span>
+<span id="cb32-9"><a href="#cb32-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_tile</span>(<span class="fu">aes</span>(<span class="at">fill =</span> AvsF_restricted4))<span class="sc">+</span><span class="fu">scale_y_reverse</span>()<span class="sc">+</span></span>
+<span id="cb32-10"><a href="#cb32-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_fill_gradient2</span>(<span class="at">name=</span><span class="st">"AvF_min"</span>, <span class="at">low=</span><span class="st">"royalblue"</span>, <span class="at">mid=</span><span class="st">"white"</span>, <span class="at">high=</span><span class="st">"red"</span>, <span class="at">midpoint=</span><span class="dv">0</span>, <span class="at">space=</span><span class="st">"Lab"</span>, <span class="at">na.value=</span><span class="st">"grey50"</span>, <span class="at">guide=</span><span class="st">"colourbar"</span>)<span class="sc">+</span></span>
+<span id="cb32-11"><a href="#cb32-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">labs</span>(<span class="at">x=</span><span class="st">"Development year"</span>, <span class="at">y=</span><span class="st">"Accident year"</span>)<span class="sc">+</span></span>
+<span id="cb32-12"><a href="#cb32-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>)<span class="sc">+</span></span>
+<span id="cb32-13"><a href="#cb32-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">axis.title.x =</span> <span class="fu">element_text</span>(<span class="at">size=</span><span class="dv">8</span>), <span class="at">axis.text.x  =</span> <span class="fu">element_text</span>(<span class="at">size=</span><span class="dv">7</span>))<span class="sc">+</span></span>
+<span id="cb32-14"><a href="#cb32-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">axis.title.y =</span> <span class="fu">element_text</span>(<span class="at">size=</span><span class="dv">8</span>), <span class="at">axis.text.y  =</span> <span class="fu">element_text</span>(<span class="at">size=</span><span class="dv">7</span>))<span class="sc">+</span></span>
+<span id="cb32-15"><a href="#cb32-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">panel.background =</span> <span class="fu">element_rect</span>(<span class="at">fill =</span> <span class="st">"grey"</span>, <span class="at">colour =</span> <span class="st">"grey"</span>, <span class="at">size =</span> <span class="dv">2</span>, <span class="at">linetype =</span> <span class="st">"solid"</span>),</span>
+<span id="cb32-16"><a href="#cb32-16" aria-hidden="true" tabindex="-1"></a>          <span class="at">panel.grid =</span> <span class="fu">element_line</span>(<span class="at">colour=</span><span class="st">"grey"</span>)) <span class="sc">+</span> </span>
+<span id="cb32-17"><a href="#cb32-17" aria-hidden="true" tabindex="-1"></a>    <span class="cn">NULL</span></span>
+<span id="cb32-18"><a href="#cb32-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-19"><a href="#cb32-19" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(p_hm)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-20-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>Let’s look at the heatmap again, with some annotations</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>p_hm <span class="sc">+</span> </span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">annotate</span>(<span class="at">geom=</span><span class="st">"rect"</span>, <span class="at">xmin=</span> <span class="fl">0.5</span>, <span class="at">xmax=</span><span class="fl">1.5</span>, <span class="at">ymin=</span><span class="fl">0.5</span>, <span class="at">ymax=</span><span class="fl">6.5</span>, <span class="at">colour=</span><span class="st">"darkblue"</span>, <span class="at">alpha=</span><span class="fl">0.1</span>, <span class="at">size=</span><span class="fl">1.5</span>) <span class="sc">+</span></span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">annotate</span>(<span class="at">geom=</span><span class="st">"rect"</span>, <span class="at">xmin=</span> <span class="fl">0.5</span>, <span class="at">xmax=</span><span class="fl">1.5</span>, <span class="at">ymin=</span><span class="fl">6.5</span>, <span class="at">ymax=</span><span class="fl">10.5</span>, <span class="at">colour=</span><span class="st">"darkred"</span>, <span class="at">alpha=</span><span class="fl">0.1</span>, <span class="at">size=</span><span class="fl">1.5</span>) <span class="sc">+</span></span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">annotate</span>(<span class="at">geom=</span><span class="st">"rect"</span>, <span class="at">xmin=</span> <span class="fl">1.5</span>, <span class="at">xmax=</span><span class="fl">2.5</span>, <span class="at">ymin=</span><span class="fl">0.5</span>, <span class="at">ymax=</span><span class="fl">6.5</span>, <span class="at">colour=</span><span class="st">"darkred"</span>, <span class="at">alpha=</span><span class="fl">0.1</span>, <span class="at">size=</span><span class="fl">1.5</span>) <span class="sc">+</span></span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">annotate</span>(<span class="at">geom=</span><span class="st">"rect"</span>, <span class="at">xmin=</span> <span class="fl">1.5</span>, <span class="at">xmax=</span><span class="fl">2.5</span>, <span class="at">ymin=</span><span class="fl">6.5</span>, <span class="at">ymax=</span><span class="fl">9.5</span>, <span class="at">colour=</span><span class="st">"darkblue"</span>, <span class="at">alpha=</span><span class="fl">0.1</span>, <span class="at">size=</span><span class="fl">1.5</span>) <span class="sc">+</span></span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">annotate</span>(<span class="at">geom=</span><span class="st">"segment"</span>, <span class="at">x=</span><span class="dv">3</span>, <span class="at">xend=</span><span class="dv">3</span>, <span class="at">y=</span><span class="dv">1</span>, <span class="at">yend=</span><span class="dv">8</span>, <span class="at">arrow=</span><span class="fu">arrow</span>(), <span class="at">colour=</span><span class="st">"darkblue"</span>, <span class="at">size=</span><span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">annotate</span>(<span class="at">geom=</span><span class="st">"rect"</span>, <span class="at">xmin=</span> <span class="fl">3.5</span>, <span class="at">xmax=</span><span class="fl">4.5</span>, <span class="at">ymin=</span><span class="fl">0.5</span>, <span class="at">ymax=</span><span class="fl">7.5</span>, <span class="at">colour=</span><span class="st">"darkred"</span>, <span class="at">alpha=</span><span class="fl">0.1</span>, <span class="at">size=</span><span class="fl">1.5</span>) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-21-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>We see:</p>
+<ul>
+<li>development year 1, a distinct area of blue in the earlier accident years (A &lt; F), followed by red (A &gt; F)</li>
+<li>development year 2, a distinct area of red in the earlier accident years (A &gt; F), followed by blue (A &lt; F)</li>
+<li>development year 3, a possible progression from red to blue with increasing accident year (F increasing relative to A)</li>
+<li>development year 4, nearly all red (A &gt; F)</li>
+</ul>
+<p>This suggests the payment pattern has altered and can be accommodated by (mostly) interaction terms within the GLM. Consider adding the following terms:</p>
+<ul>
+<li>(development year = 1) * (accident year is between 1 and 6)</li>
+<li>(development year = 2) * (accident year is between 1 and 6)</li>
+<li>(development year = 3) * (accident year linear trend)</li>
+<li>(development year = 4)</li>
+</ul>
+<p>So, let’s refit the model with terms to capture these and have a look at the heat map again</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="co"># add the new terms</span></span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>msdata[, dev_year_eq_1 <span class="sc">:</span><span class="er">=</span> <span class="fu">as.integer</span>(dev_year <span class="sc">==</span> <span class="dv">1</span>)]</span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>msdata[, dev_year_eq_3 <span class="sc">:</span><span class="er">=</span> <span class="fu">as.integer</span>(dev_year <span class="sc">==</span> <span class="dv">3</span>)]</span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>msdata[, dev_year_eq_4 <span class="sc">:</span><span class="er">=</span> <span class="fu">as.integer</span>(dev_year <span class="sc">==</span> <span class="dv">4</span>)]</span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>msdata[, acc_year_1_6 <span class="sc">:</span><span class="er">=</span> <span class="fu">as.integer</span>(acc_year <span class="sc">&gt;=</span> <span class="dv">1</span> <span class="sc">&amp;</span> acc_year <span class="sc">&lt;=</span> <span class="dv">6</span>)]</span>
+<span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-7"><a href="#cb34-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a>glm_fit5 <span class="ot">&lt;-</span> <span class="fu">glm</span>(<span class="at">data =</span> msdata, </span>
+<span id="cb34-9"><a href="#cb34-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">family =</span> <span class="fu">quasipoisson</span>(<span class="at">link =</span> <span class="st">"log"</span>),</span>
+<span id="cb34-10"><a href="#cb34-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">formula =</span> <span class="st">"incremental ~ acc_year + acc_year_2 + dev_year_m1 + dev_year_ge_7 + dev_year_eq_2 + dev_year_eq_4 +</span></span>
+<span id="cb34-11"><a href="#cb34-11" aria-hidden="true" tabindex="-1"></a><span class="st">    dev_year_eq_1:acc_year_1_6 +  dev_year_eq_2:acc_year_1_6 + dev_year_eq_3:acc_year "</span>)</span>
+<span id="cb34-12"><a href="#cb34-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-13"><a href="#cb34-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-14"><a href="#cb34-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-15"><a href="#cb34-15" aria-hidden="true" tabindex="-1"></a>glm_fit5<span class="sc">$</span>coeff_table <span class="ot">&lt;-</span> <span class="fu">data.table</span>(<span class="at">parameter =</span> <span class="fu">names</span>(glm_fit5<span class="sc">$</span>coefficients), <span class="at">coeff_glm_fit5 =</span> glm_fit5<span class="sc">$</span>coefficients)</span>
+<span id="cb34-16"><a href="#cb34-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-17"><a href="#cb34-17" aria-hidden="true" tabindex="-1"></a><span class="co"># print the coefficient table</span></span>
+<span id="cb34-18"><a href="#cb34-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-19"><a href="#cb34-19" aria-hidden="true" tabindex="-1"></a>glm_fit5<span class="sc">$</span>coeff_table <span class="sc">|&gt;</span> </span>
+<span id="cb34-20"><a href="#cb34-20" aria-hidden="true" tabindex="-1"></a>    knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">digits=</span><span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">4</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<table class="table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">parameter</th>
+<th style="text-align: right;">coeff_glm_fit5</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">(Intercept)</td>
+<td style="text-align: right;">10.4904</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">acc_year</td>
+<td style="text-align: right;">0.2066</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">acc_year_2</td>
+<td style="text-align: right;">-0.0183</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">dev_year_m1</td>
+<td style="text-align: right;">-0.3685</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">dev_year_ge_7</td>
+<td style="text-align: right;">0.2720</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">dev_year_eq_2</td>
+<td style="text-align: right;">0.0375</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">dev_year_eq_4</td>
+<td style="text-align: right;">0.0528</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">dev_year_eq_1:acc_year_1_6</td>
+<td style="text-align: right;">-0.0671</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">dev_year_eq_2:acc_year_1_6</td>
+<td style="text-align: right;">0.1273</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">acc_year:dev_year_eq_3</td>
+<td style="text-align: right;">-0.0113</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<ul>
+<li><p>This model should match that displayed in Table 7-5 of the monograph - and indeed it does (some very minor differences in parameter values - the model in the monograph was fitted in SAS).</p></li>
+<li><p>Look at the heat map again with annotations - has the model resolved the identified issues?</p></li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="co"># attach fitteds and residuals</span></span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>msdata[, residuals5 <span class="sc">:</span><span class="er">=</span> <span class="fu">rstandard</span>(glm_fit5)</span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>       ][, fitted5 <span class="sc">:</span><span class="er">=</span> glm_fit5<span class="sc">$</span>fitted.values</span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a>         ][, linear_predictor5 <span class="sc">:</span><span class="er">=</span> <span class="fu">log</span>(fitted5)</span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a>           ][, AvsF5 <span class="sc">:</span><span class="er">=</span> incremental <span class="sc">/</span> fitted5</span>
+<span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a>             ][, AvsF_restricted5 <span class="sc">:</span><span class="er">=</span> <span class="fu">log</span>(<span class="fu">pmax</span>(<span class="fl">0.5</span>, <span class="fu">pmin</span>(<span class="dv">2</span>,AvsF5)))]</span>
+<span id="cb35-7"><a href="#cb35-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-8"><a href="#cb35-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-9"><a href="#cb35-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-10"><a href="#cb35-10" aria-hidden="true" tabindex="-1"></a>p_hm <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>msdata, <span class="fu">aes</span>(<span class="at">x=</span>dev_year, <span class="at">y=</span>acc_year)) <span class="sc">+</span> </span>
+<span id="cb35-11"><a href="#cb35-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_tile</span>(<span class="fu">aes</span>(<span class="at">fill =</span> AvsF_restricted5))<span class="sc">+</span><span class="fu">scale_y_reverse</span>()<span class="sc">+</span></span>
+<span id="cb35-12"><a href="#cb35-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_fill_gradient2</span>(<span class="at">name=</span><span class="st">"AvF_min"</span>, <span class="at">low=</span><span class="st">"royalblue"</span>, <span class="at">mid=</span><span class="st">"white"</span>, <span class="at">high=</span><span class="st">"red"</span>, <span class="at">midpoint=</span><span class="dv">0</span>, <span class="at">space=</span><span class="st">"Lab"</span>, <span class="at">na.value=</span><span class="st">"grey50"</span>, <span class="at">guide=</span><span class="st">"colourbar"</span>)<span class="sc">+</span></span>
+<span id="cb35-13"><a href="#cb35-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">labs</span>(<span class="at">x=</span><span class="st">"Development year"</span>, <span class="at">y=</span><span class="st">"Accident year"</span>)<span class="sc">+</span></span>
+<span id="cb35-14"><a href="#cb35-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>)<span class="sc">+</span></span>
+<span id="cb35-15"><a href="#cb35-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">axis.title.x =</span> <span class="fu">element_text</span>(<span class="at">size=</span><span class="dv">8</span>), <span class="at">axis.text.x  =</span> <span class="fu">element_text</span>(<span class="at">size=</span><span class="dv">7</span>))<span class="sc">+</span></span>
+<span id="cb35-16"><a href="#cb35-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">axis.title.y =</span> <span class="fu">element_text</span>(<span class="at">size=</span><span class="dv">8</span>), <span class="at">axis.text.y  =</span> <span class="fu">element_text</span>(<span class="at">size=</span><span class="dv">7</span>))<span class="sc">+</span></span>
+<span id="cb35-17"><a href="#cb35-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">panel.background =</span> <span class="fu">element_rect</span>(<span class="at">fill =</span> <span class="st">"grey"</span>, <span class="at">colour =</span> <span class="st">"grey"</span>, <span class="at">size =</span> <span class="dv">2</span>, <span class="at">linetype =</span> <span class="st">"solid"</span>),</span>
+<span id="cb35-18"><a href="#cb35-18" aria-hidden="true" tabindex="-1"></a>          <span class="at">panel.grid =</span> <span class="fu">element_line</span>(<span class="at">colour=</span><span class="st">"grey"</span>)) <span class="sc">+</span> </span>
+<span id="cb35-19"><a href="#cb35-19" aria-hidden="true" tabindex="-1"></a>    <span class="fu">annotate</span>(<span class="at">geom=</span><span class="st">"rect"</span>, <span class="at">xmin=</span> <span class="fl">0.5</span>, <span class="at">xmax=</span><span class="fl">1.5</span>, <span class="at">ymin=</span><span class="fl">0.5</span>, <span class="at">ymax=</span><span class="fl">6.5</span>, <span class="at">colour=</span><span class="st">"darkblue"</span>, <span class="at">alpha=</span><span class="fl">0.1</span>, <span class="at">size=</span><span class="fl">1.5</span>) <span class="sc">+</span></span>
+<span id="cb35-20"><a href="#cb35-20" aria-hidden="true" tabindex="-1"></a>    <span class="fu">annotate</span>(<span class="at">geom=</span><span class="st">"rect"</span>, <span class="at">xmin=</span> <span class="fl">0.5</span>, <span class="at">xmax=</span><span class="fl">1.5</span>, <span class="at">ymin=</span><span class="fl">6.5</span>, <span class="at">ymax=</span><span class="fl">10.5</span>, <span class="at">colour=</span><span class="st">"darkred"</span>, <span class="at">alpha=</span><span class="fl">0.1</span>, <span class="at">size=</span><span class="fl">1.5</span>) <span class="sc">+</span></span>
+<span id="cb35-21"><a href="#cb35-21" aria-hidden="true" tabindex="-1"></a>    <span class="fu">annotate</span>(<span class="at">geom=</span><span class="st">"rect"</span>, <span class="at">xmin=</span> <span class="fl">1.5</span>, <span class="at">xmax=</span><span class="fl">2.5</span>, <span class="at">ymin=</span><span class="fl">0.5</span>, <span class="at">ymax=</span><span class="fl">6.5</span>, <span class="at">colour=</span><span class="st">"darkred"</span>, <span class="at">alpha=</span><span class="fl">0.1</span>, <span class="at">size=</span><span class="fl">1.5</span>) <span class="sc">+</span></span>
+<span id="cb35-22"><a href="#cb35-22" aria-hidden="true" tabindex="-1"></a>    <span class="fu">annotate</span>(<span class="at">geom=</span><span class="st">"rect"</span>, <span class="at">xmin=</span> <span class="fl">1.5</span>, <span class="at">xmax=</span><span class="fl">2.5</span>, <span class="at">ymin=</span><span class="fl">6.5</span>, <span class="at">ymax=</span><span class="fl">9.5</span>, <span class="at">colour=</span><span class="st">"darkblue"</span>, <span class="at">alpha=</span><span class="fl">0.1</span>, <span class="at">size=</span><span class="fl">1.5</span>) <span class="sc">+</span></span>
+<span id="cb35-23"><a href="#cb35-23" aria-hidden="true" tabindex="-1"></a>    <span class="fu">annotate</span>(<span class="at">geom=</span><span class="st">"segment"</span>, <span class="at">x=</span><span class="dv">3</span>, <span class="at">xend=</span><span class="dv">3</span>, <span class="at">y=</span><span class="dv">1</span>, <span class="at">yend=</span><span class="dv">8</span>, <span class="at">arrow=</span><span class="fu">arrow</span>(), <span class="at">colour=</span><span class="st">"darkblue"</span>, <span class="at">size=</span><span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb35-24"><a href="#cb35-24" aria-hidden="true" tabindex="-1"></a>    <span class="fu">annotate</span>(<span class="at">geom=</span><span class="st">"rect"</span>, <span class="at">xmin=</span> <span class="fl">3.5</span>, <span class="at">xmax=</span><span class="fl">4.5</span>, <span class="at">ymin=</span><span class="fl">0.5</span>, <span class="at">ymax=</span><span class="fl">7.5</span>, <span class="at">colour=</span><span class="st">"darkred"</span>, <span class="at">alpha=</span><span class="fl">0.1</span>, <span class="at">size=</span><span class="fl">1.5</span>) </span>
+<span id="cb35-25"><a href="#cb35-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-26"><a href="#cb35-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-27"><a href="#cb35-27" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(p_hm)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-23-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<ul>
+<li><p>This looks much better.</p></li>
+<li><p>We should also look at the residual plots again</p></li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>p1 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>msdata, <span class="fu">aes</span>(<span class="at">x=</span>linear_predictor5, <span class="at">y=</span>residuals5, <span class="at">colour=</span>dev_year)) <span class="sc">+</span></span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="at">size=</span><span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_colour_viridis</span>(<span class="at">begin=</span><span class="fl">0.9</span>, <span class="at">end=</span><span class="dv">0</span>) <span class="sc">+</span></span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme_bw</span>() <span class="sc">+</span> </span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>) <span class="sc">+</span></span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggtitle</span>(<span class="st">"Linear predictor"</span>)</span>
+<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-8"><a href="#cb36-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-9"><a href="#cb36-9" aria-hidden="true" tabindex="-1"></a>p2 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>msdata, <span class="fu">aes</span>(<span class="at">x=</span>acc_year, <span class="at">y=</span>residuals5)) <span class="sc">+</span></span>
+<span id="cb36-10"><a href="#cb36-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="at">size=</span><span class="dv">2</span>, <span class="at">colour=</span><span class="st">"#2d708eff"</span>) <span class="sc">+</span></span>
+<span id="cb36-11"><a href="#cb36-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme_bw</span>() <span class="sc">+</span> </span>
+<span id="cb36-12"><a href="#cb36-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggtitle</span>(<span class="st">"Accident year"</span>)</span>
+<span id="cb36-13"><a href="#cb36-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-14"><a href="#cb36-14" aria-hidden="true" tabindex="-1"></a>p3 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>msdata, <span class="fu">aes</span>(<span class="at">x=</span>dev_year, <span class="at">y=</span>residuals5)) <span class="sc">+</span></span>
+<span id="cb36-15"><a href="#cb36-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="at">size=</span><span class="dv">2</span>, <span class="at">colour=</span><span class="st">"#2d708eff"</span>) <span class="sc">+</span></span>
+<span id="cb36-16"><a href="#cb36-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme_bw</span>() <span class="sc">+</span> </span>
+<span id="cb36-17"><a href="#cb36-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggtitle</span>(<span class="st">"Development year"</span>)</span>
+<span id="cb36-18"><a href="#cb36-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-19"><a href="#cb36-19" aria-hidden="true" tabindex="-1"></a>p4 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>msdata, <span class="fu">aes</span>(<span class="at">x=</span>cal_year, <span class="at">y=</span>residuals5)) <span class="sc">+</span></span>
+<span id="cb36-20"><a href="#cb36-20" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="at">size=</span><span class="dv">2</span>, <span class="at">colour=</span><span class="st">"#2d708eff"</span>) <span class="sc">+</span></span>
+<span id="cb36-21"><a href="#cb36-21" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme_bw</span>() <span class="sc">+</span> </span>
+<span id="cb36-22"><a href="#cb36-22" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggtitle</span>(<span class="st">"Calendar year"</span>)</span>
+<span id="cb36-23"><a href="#cb36-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-24"><a href="#cb36-24" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> (p1 <span class="sc">+</span> p2) <span class="sc">/</span> (p3 <span class="sc">+</span> p4)</span>
+<span id="cb36-25"><a href="#cb36-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-26"><a href="#cb36-26" aria-hidden="true" tabindex="-1"></a>p</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-24-1.png" class="img-fluid" width="864"></p>
+</div>
+</div>
+</section>
+</section>
+<section id="loss-reserve-1" class="level2">
+<h2 class="anchored" data-anchor-id="loss-reserve-1">Loss reserve</h2>
+<ul>
+<li>Now that we have a model, let’s produce the estimate of the outstanding claims by accident year and in total.
+<ul>
+<li>Take the lower triangle data [futdata] created above</li>
+<li>Add on the new variates we created</li>
+<li>Score the model on this data</li>
+<li>Summarise the results</li>
+</ul></li>
+</ul>
+<p><br> Create the data and score using <code>predict</code></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="co"># add all model variates</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>futdata[, acc_year_2 <span class="sc">:</span><span class="er">=</span> acc_year<span class="sc">^</span><span class="dv">2</span></span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>        ][, dev_year_m1 <span class="sc">:</span><span class="er">=</span> dev_year <span class="sc">-</span> <span class="dv">1</span></span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>          ][, dev_year_ge_7 <span class="sc">:</span><span class="er">=</span> <span class="fu">pmax</span>(<span class="dv">0</span>, dev_year <span class="sc">-</span> <span class="fl">7.5</span>)</span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a>            ][, dev_year_eq_1 <span class="sc">:</span><span class="er">=</span> <span class="fu">as.integer</span>(dev_year <span class="sc">==</span> <span class="dv">1</span>)</span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a>              ][, dev_year_eq_2 <span class="sc">:</span><span class="er">=</span> <span class="fu">as.integer</span>(dev_year <span class="sc">==</span> <span class="dv">2</span>)</span>
+<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a>                ][, dev_year_eq_3 <span class="sc">:</span><span class="er">=</span> <span class="fu">as.integer</span>(dev_year <span class="sc">==</span> <span class="dv">3</span>)</span>
+<span id="cb37-8"><a href="#cb37-8" aria-hidden="true" tabindex="-1"></a>                  ][, dev_year_eq_4 <span class="sc">:</span><span class="er">=</span> <span class="fu">as.integer</span>(dev_year <span class="sc">==</span> <span class="dv">4</span>)</span>
+<span id="cb37-9"><a href="#cb37-9" aria-hidden="true" tabindex="-1"></a>                    ][, acc_year_1_6 <span class="sc">:</span><span class="er">=</span> <span class="fu">as.integer</span>(acc_year<span class="sc">&gt;=</span><span class="dv">1</span> <span class="sc">&amp;</span> acc_year <span class="sc">&lt;=</span><span class="dv">6</span>)]</span>
+<span id="cb37-10"><a href="#cb37-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-11"><a href="#cb37-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-12"><a href="#cb37-12" aria-hidden="true" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">predict</span>(glm_fit5, <span class="at">newdata =</span> futdata, <span class="at">type=</span><span class="st">"response"</span>)</span>
+<span id="cb37-13"><a href="#cb37-13" aria-hidden="true" tabindex="-1"></a>futdata[, incremental <span class="sc">:</span><span class="er">=</span> x]</span>
+<span id="cb37-14"><a href="#cb37-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-15"><a href="#cb37-15" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(futdata)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   acc_year dev_year cal_year acc_year_factor dev_year_factor incremental
+1:        2       10       12               2              10    3618.769
+2:        3        9       12               3               9    4470.907
+3:        3       10       13               3              10    4059.635
+4:        4        8       12               4               8    5324.841
+5:        4        9       13               4               9    4835.016
+6:        4       10       14               4              10    4390.250
+   acc_year_2 dev_year_m1 dev_year_ge_7 dev_year_eq_1 dev_year_eq_2
+1:          4           9           2.5             0             0
+2:          9           8           1.5             0             0
+3:          9           9           2.5             0             0
+4:         16           7           0.5             0             0
+5:         16           8           1.5             0             0
+6:         16           9           2.5             0             0
+   dev_year_eq_3 dev_year_eq_4 acc_year_1_6
+1:             0             0            1
+2:             0             0            1
+3:             0             0            1
+4:             0             0            1
+5:             0             0            1
+6:             0             0            1</code></pre>
+</div>
+</div>
+<p>Get reserves by accident year and in total</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>ocl_year <span class="ot">&lt;-</span> futdata[,  <span class="fu">lapply</span>(.SD, sum), .SDcols<span class="ot">=</span><span class="fu">c</span>(<span class="st">"incremental"</span>), by<span class="ot">=</span><span class="st">"acc_year"</span>]</span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>ocl_total <span class="ot">&lt;-</span> ocl_year[, <span class="fu">sum</span>(incremental)]</span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a>ocl_year <span class="sc">|&gt;</span> </span>
+<span id="cb39-6"><a href="#cb39-6" aria-hidden="true" tabindex="-1"></a>    knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">digits=</span><span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">0</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<table class="table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: right;">acc_year</th>
+<th style="text-align: right;">incremental</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">3619</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">8531</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">14550</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">22173</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">32458</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">45695</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">62955</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">79301</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">101212</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The total reserve is</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>ocl_total <span class="sc">|&gt;</span> <span class="fu">round</span>(<span class="dv">0</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 370493</code></pre>
+</div>
+</div>
+<ul>
+<li>These results are similar, though not identical, to the results given in Table 7-6 of the monograph.</li>
+<li>This is because the <em>forecast</em> column of the monograph contains bootstrapped means rather than the model mean.</li>
+</ul>
+</section>
+<section id="conclusion" class="level2">
+<h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
+<p>The aim of this article has been to demonstrate fitting a GLM to a loss reserve following the example used in the CAS monograph. We started with the chain ladder equivalent - the cross classified model with an over-dispersed Poisson distribution, then first simplified it and second, extended it to include some interactions. We also cover how to create some of the plots discussed in the monograph in R, in particular residual scatter plots and the heat maps.</p>
+</section>
+<section id="session-information" class="level2">
+<h2 class="anchored" data-anchor-id="session-information">Session information</h2>
+<p>To assist with reproducibility, here are details of my R session.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()  </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>R version 4.2.3 (2023-03-15 ucrt)
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+Running under: Windows 10 x64 (build 19045)
+
+Matrix products: default
+
+locale:
+[1] LC_COLLATE=English_Australia.utf8  LC_CTYPE=English_Australia.utf8   
+[3] LC_MONETARY=English_Australia.utf8 LC_NUMERIC=C                      
+[5] LC_TIME=English_Australia.utf8    
+
+attached base packages:
+[1] stats     graphics  grDevices datasets  utils     methods   base     
+
+other attached packages:
+[1] patchwork_1.1.2   viridis_0.6.2     viridisLite_0.4.1 ggplot2_3.4.2    
+[5] data.table_1.14.8 here_1.0.1       
+
+loaded via a namespace (and not attached):
+ [1] knitr_1.42        magrittr_2.0.3    munsell_0.5.0     colorspace_2.1-0 
+ [5] R6_2.5.1          rlang_1.1.1       fastmap_1.1.1     fansi_1.0.4      
+ [9] tools_4.2.3       grid_4.2.3        gtable_0.3.3      xfun_0.39        
+[13] utf8_1.2.3        cli_3.6.1         withr_2.5.0       htmltools_0.5.5  
+[17] yaml_2.3.7        rprojroot_2.0.3   digest_0.6.31     tibble_3.2.1     
+[21] lifecycle_1.0.3   gridExtra_2.3     farver_2.1.1      htmlwidgets_1.6.2
+[25] vctrs_0.6.2       glue_1.6.2        evaluate_0.20     rmarkdown_2.21   
+[29] labeling_0.4.2    pillar_1.9.0      compiler_4.2.3    scales_1.2.1     
+[33] jsonlite_1.8.4    renv_0.17.3       pkgconfig_2.0.3  </code></pre>
+</div>
+</div>
+
+
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents"><h2 class="anchored quarto-appendix-heading">Reuse</h2><div id="quarto-reuse" class="quarto-appendix-contents"><div><a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">https://creativecommons.org/licenses/by-sa/4.0/</a></div></div></section></div></main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>

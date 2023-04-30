@@ -1,0 +1,52 @@
+---
+title: "Odds and ends"
+#image: Images/mlrwp_logo.png
+page-layout: article
+---
+
+## Welcome...
+
+to my website. I use this to occasionally share code snippets and tutorial examples.
+
+Check out the list of [posts](post.qmd) to see what's available.
+
+
+
+
+::: {.callout-note icon=false}
+
+### Other code snippets
+
+I'm part of the [IFoA Machine Learning in Reserving Working Party](https://institute-and-faculty-of-actuaries.github.io/mlr-blog/post/foundations/python-glms/). On our blog we share a lot of code examples in both R and Python, so check that out if you'd like to see some more useful material.
+:::
+
+
+
+
+Last updated: `r format(Sys.Date(), "%B-%Y")`
+
+
+```{r}
+#| include: false
+knitr::knit_exit()
+```
+
+
+Last updated: `r format(Sys.Date(), "%B-%Y")`
+
+
+
+```{r}
+#| include: false
+
+knitr::knit_exit()
+
+```
+
+
+::: {.callout-important icon=false}
+
+### Latest article
+
+See my most recent article - [estimating model error](./post/2023-05-04-model-error-example/)
+:::
