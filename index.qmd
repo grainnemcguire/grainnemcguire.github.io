@@ -10,6 +10,13 @@ to my website. I use this to occasionally share code snippets and tutorial examp
 
 Check out the list of [posts](post.qmd) to see what's available.
 
+::: {.callout-important icon=false}
+
+### Latest post
+
+I've shared a [tutorial example](post/2023-05-04-model-error-example/) on how to use the Lasso, Bayesian Model Averaging and bootstrapping to to estimate forecast errors for loss reserving. This post was publicly shared in September 2023, prior to that it was online, but hidden, hence the earlier publication date.
+:::
+
 
 
 
@@ -17,7 +24,7 @@ Check out the list of [posts](post.qmd) to see what's available.
 
 ### Other code snippets
 
-I'm part of the [IFoA Machine Learning in Reserving Working Party](https://institute-and-faculty-of-actuaries.github.io/mlr-blog/post/foundations/python-glms/). On our blog we share a lot of code examples in both R and Python, so check that out if you'd like to see some more useful material.
+I'm part of the [IFoA Machine Learning in Reserving Working Party](https://institute-and-faculty-of-actuaries.github.io/mlr-blog/post/foundations/python-glms/). On our blog we share a lot of code examples in both R and Python, so check that out if you'd like to see other useful material.
 :::
 
 

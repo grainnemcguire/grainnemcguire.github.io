@@ -2,7 +2,7 @@
 title: "Model error via regularised regression - CAS monograph data"
 author: "Grainne McGuire"
 date: '2023-05-04'
-draft: true
+#draft: true
 description: "Estimate model error and other error via a Lasso bootstrap"
 categories: ["Machine Learning", "R", "Lasso", "Model Error", "Bootstrap"]
 image: "prior.png"
@@ -46,7 +46,7 @@ First I set up my R environment:
 
 ```{r}
 #| collapse: true
-#| echo: false
+#| echo: true
 
 library(here)
 library(data.table)
@@ -1217,7 +1217,7 @@ ggplot(data=cdfs, aes(x=reserve, y=cdf, colour = factor(boot), alpha = factor(bo
 
 In Section 5.4.2 of the [CAS monograph](https://www.casact.org/monograph/cas-monograph-no-3), we used the bootstrap to estimate parameter and process error and found a coefficient of variation of prediction of 3.8%. 
 
-Our results for the two main priors are 3.5% and 5.1% so in a similar ball-park. *A priori* we'd expect low internal model structural error for this data set since we know that it is well represented by a chain ladder model, while a small number of interactions improve it further. It's also quite small and simple so we can be confidence that we're not missing model structure.
+Our results for the two main priors are 3.5% and 5.1% so in a similar ball-park. *A priori* we'd expect low internal model structural error for this data set since we know that it is well represented by a chain ladder model, while a small number of interactions improve it further. It's also quite small and simple so we can be confident that we're not missing model structure.
 
 The GLM results in the monograph were not subject to any filtering of results for inappropriate extrapolation so may have slightly overstated parameter and process error. As noted in our paper (Section 7.4), results can be quite sensitive to inclusion gates.
 
